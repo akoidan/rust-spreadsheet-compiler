@@ -1,14 +1,20 @@
 use std::collections::HashMap;
 
 pub struct Column {
-    name: String,
-    letter: String,
+    pub name: String,
+    pub letter: String,
     pub values: HashMap<u32, String>,
+}
+
+struct Entry {
+    line_number: u32,
+    value: String,
 }
 
 pub struct TableData {
     pub columns: Vec<Column>,
 }
+
 
 pub trait TableDataGetter {
     fn add_column(&mut self, name: &str, index: u8);

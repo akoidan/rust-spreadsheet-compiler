@@ -2,11 +2,9 @@ use crate::table::*;
 use crate::io_utils::*;
 use crate::logic_utils::*;
 
-pub fn lines_to_table(data: Vec<&str>) {
+pub fn lines_to_table(data: Vec<&str>) -> TableData {
     let mut table: TableData = TableData { columns: vec![] };
-
     let mut current_head: Vec<&str> = vec![];
-
     let mut row_index = 1;
 
     for line in data {
@@ -42,5 +40,5 @@ pub fn lines_to_table(data: Vec<&str>) {
         }
         row_index += 1;
     }
-    print!("Finished");
+    return table;
 }
