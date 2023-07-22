@@ -18,9 +18,6 @@ pub trait TableDataGetter {
 
 impl TableDataGetter for TableData {
     fn add_column(&mut self, name: &str, index: u8) {
-
-
-        // char::fr
         let letter = char::from(('A' as u8) + index); // 0 -> A, 1 -> B, ...
 
         if self.columns.iter().any(|x| x.name == name) {

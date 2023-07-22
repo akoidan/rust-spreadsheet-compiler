@@ -17,28 +17,26 @@ pub fn lines_to_table(data: Vec<&str>) {
             current_head.clear();
             let mut index = 0;
             for column in columns {
-                if column == "" {
-                    continue;
+                if column != "" {
+                    if !crate::logic_utils::is_head(&column) {
+                        panic!("Invalid file structure, some columns are heads, and some not")
+                    }
+                    let name = extract_head_name(column);
+                    current_head.push(name);
+                    table.add_column(name, index);
                 }
-                if !crate::logic_utils::is_head(&column) {
-                    panic!("Invalid file structure, some columns are heads, and some not")
-                }
-                let name = extract_head_name(column);
-                current_head.push(name);
-                table.add_column(name, index);
                 index += 1;
             }
         } else {
             let mut index = 0;
             for column in columns {
-                if column == "" {
-                    continue;
+                if column != "" {
+                    let name = current_head[index];
+                    table
+                        .get_by_name(name)
+                        .values
+                        .insert(row_index, String::from(column));
                 }
-                let name = current_head[index];
-                table
-                    .get_by_name(name)
-                    .values
-                    .insert(row_index, String::from(column));
                 index += 1;
             }
         }
