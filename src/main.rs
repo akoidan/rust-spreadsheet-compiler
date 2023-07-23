@@ -4,14 +4,12 @@ mod logic_utils;
 mod table;
 mod regex_helpers;
 
-use io_utils::*;
-use logic_utils::LogicExecutor;
-use table_parser::*;
-use regex::{Captures, Regex};
+use io_utils::{file_to_str, str_to_vector};
+use logic_utils::{LogicExecutor};
+use table_parser::{lines_to_table};
 
 extern crate regex;
 extern crate substring;
-
 
 
 fn main() {

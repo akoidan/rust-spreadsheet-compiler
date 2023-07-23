@@ -1,12 +1,9 @@
 use std::collections::VecDeque;
+use std::fmt::Pointer;
 
 use crate::table::*;
-// use regex::Regex;
-
 use crate::regex_helpers::*;
 use crate::io_utils::*;
-use regex::Regex;
-use substring::Substring;
 
 fn remove_first_symbol<'a>(s: &'a str) -> &'a str {
     return &s[1..s.len()];
@@ -35,6 +32,8 @@ pub trait LogicExecutor {
     fn fill_data(&mut self);
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>);
     fn calc_function(&self, name: &str, args: &[String]) -> String;
+    fn revaluate_from_literal(&self,stack: &mut VecDeque<Item>);
+    fn get_matching_start_zone(&self, item: Item) -> char;
 }
 
 struct Command {
@@ -52,67 +51,88 @@ impl LogicExecutor for TableData {
         return c;
     }
 
-    fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>) {
-        let item = stack.pop_back().unwrap();
-        let mut operands = Vec::new();
+    fn get_matching_start_zone(&self, item: Item) -> char {
         let start_zone_value = match item {
             Item::ZoneEnd(c) => match c {
                 '>' => '<',
                 ')' => '(',
-                _ => panic!("Invalid zone end value"),
+                _ => panic!("Invalid zone_end char"),
             },
-            _ => panic!("Invalid zone end item"),
+            _ => panic!("Expected zone_end"),
         };
+        return start_zone_value;
+    }
 
-        loop {
-            if stack.is_empty() {
-                panic!("WTF");
+    fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>) {
+
+    }
+
+    fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>) {
+        let item = stack.pop_back().unwrap();
+        let mut operands = Vec::new();
+        match item {
+            Item::Literal(val) => {
+                // ...
             }
+            Item::ZoneEnd(val) => {
+                let start_zone_value = self.get_matching_start_zone(item);
+                loop {
+                    if stack.is_empty() {
+                        panic!("WTF");
+                    }
 
-            let item_inner = stack.pop_back().unwrap();
-            match item_inner {
-                Item::Literal(val) => operands.push(val),
-                Item::ZoneStart(c) if c == start_zone_value => {
-                    if let Some(name_item) = stack.pop_back() {
-                        match name_item {
-                            Item::Token(name) => {
-                                let res = self.calc_function(&name, &operands);
-                                stack.push_back(Item::Literal(res));
-                            }
-                            Item::Operator(op) => {
-                                if let Some(name_2_item) = stack.pop_back() {
-                                    match name_2_item {
-                                        Item::Literal(val) => {
-                                            operands.push(val);
-                                            let res =
-                                                self.calc_function(&op.to_string(), &operands);
-                                            stack.push_back(Item::Literal(res));
-                                            operands.clear();
-                                        }
-                                        _ => panic!("WTF"),
+                    let item_inner = stack.pop_back().unwrap();
+                    match item_inner {
+                        Item::Literal(val) => operands.push(val),
+                        Item::ZoneStart(c) if c == start_zone_value => {
+                            if let Some(name_item) = stack.pop_back() {
+                                match name_item {
+                                    Item::Token(name) => {
+                                        let res = self.calc_function(&name, &operands);
+                                        stack.push_back(Item::Literal(res));
                                     }
+                                    Item::Operator(op) => {
+                                        if let Some(name_2_item) = stack.pop_back() {
+                                            match name_2_item {
+                                                Item::Literal(val) => {
+                                                    operands.push(val);
+                                                    let res =
+                                                        self.calc_function(&op.to_string(), &operands);
+                                                    stack.push_back(Item::Literal(res));
+                                                    operands.clear();
+                                                }
+                                                _ => panic!("WTF"),
+                                            }
+                                        }
+                                    }
+                                    _ => panic!("WTF"),
                                 }
                             }
-                            _ => panic!("WTF"),
+                            break;
                         }
-                    }
-                    break;
-                }
-                Item::Operator(op) => {
-                    if let Some(name_item) = stack.pop_back() {
-                        match name_item {
-                            Item::Literal(val) => {
-                                operands.push(val);
-                                let res = self.calc_function(&op.to_string(), &operands);
-                                stack.push_back(Item::Literal(res));
-                                operands.clear();
+                        Item::Operator(op) => {
+                            if let Some(name_item) = stack.pop_back() {
+                                match name_item {
+                                    Item::Literal(val) => {
+                                        operands.push(val);
+                                        let res = self.calc_function(&op.to_string(), &operands);
+                                        stack.push_back(Item::Literal(res));
+                                        operands.clear();
+                                    }
+                                    _ => panic!("WTF"),
+                                }
                             }
-                            _ => panic!("WTF"),
                         }
+                        _ => panic!("WTF"),
                     }
                 }
-                _ => panic!("WTF"),
+
             }
+            _ => panic!("Unsupported type of expression"),
+        }
+
+        loop {
+
         }
     }
 

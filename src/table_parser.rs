@@ -1,6 +1,21 @@
-use crate::table::*;
-use crate::io_utils::*;
-use crate::logic_utils::*;
+use crate::table::{TableData, Column, TableDataGetter};
+use crate::io_utils::{str_to_vector};
+use crate::logic_utils::{is_head, extract_head_name};
+use std::collections::HashMap;
+
+fn add_column(table: &mut TableData, name: &str, index: u8) {
+    let letter = char::from(('A' as u8) + index); // 0 -> A, 1 -> B, ...
+
+    if table.columns.iter().any(|x| x.name == name) {
+        panic!("Column {name} already exists");
+    }
+    let c = Column {
+        letter: String::from(letter.to_string()),
+        name: String::from(name),
+        values: HashMap::new(),
+    };
+    table.columns.push(c);
+}
 
 pub fn lines_to_table(data: Vec<&str>) -> TableData {
     let mut table: TableData = TableData { columns: vec![] };
@@ -16,12 +31,12 @@ pub fn lines_to_table(data: Vec<&str>) -> TableData {
             let mut index = 0;
             for column in columns {
                 if column != "" {
-                    if !crate::logic_utils::is_head(&column) {
+                    if !is_head(&column) {
                         panic!("Invalid file structure, some columns are heads, and some not")
                     }
                     let name = extract_head_name(column);
                     current_head.push(name);
-                    table.add_column(name, index);
+                    add_column(&mut table, name, index);
                 }
                 index += 1;
             }
