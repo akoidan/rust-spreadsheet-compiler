@@ -18,10 +18,10 @@ pub trait TableDataGetter {
 impl TableDataGetter for TableData {
     fn get_by_name<'a>(&'a mut self, name: &str) -> &'a mut Column {
         let index = self.columns.iter().position(|x| x.name == name);
-        return &mut self.columns[index.expect("column doesnt exist")];
+        return &mut self.columns[index.expect("column {name} doesnt exist")];
     }
     fn get_by_letter<'a>(&'a mut self, letter: &str) -> &'a mut Column {
         let index = self.columns.iter().position(|x| x.letter == letter);
-        return &mut self.columns[index.expect("column doesnt exist")];
+        return &mut self.columns[index.expect("column {letter} doesnt exist")];
     }
 }

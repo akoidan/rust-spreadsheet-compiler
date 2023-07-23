@@ -1,10 +1,9 @@
 use std::collections::VecDeque;
 use std::fmt::Pointer;
 
-use crate::table::*;
 use crate::regex_helpers::*;
-use crate::io_utils::*;
-
+use crate::str_utils::{StrUtils};
+use crate::table::*;
 
 struct Command {
     operands: Vec<String>,
@@ -26,7 +25,7 @@ pub trait LogicExecutor {
     fn fill_data(&mut self);
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>);
     fn calc_function(&self, name: &str, args: &[String]) -> String;
-    fn revaluate_from_literal(&self,stack: &mut VecDeque<Item>);
+    fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
     fn get_matching_start_zone(item: Item) -> char;
 }
 
@@ -52,9 +51,7 @@ impl LogicExecutor for TableData {
         return start_zone_value;
     }
 
-    fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>) {
-
-    }
+    fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>) {}
 
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>) {
         let item = stack.pop_back().unwrap();
@@ -85,8 +82,8 @@ impl LogicExecutor for TableData {
                                             match name_2_item {
                                                 Item::Literal(val) => {
                                                     operands.push(val);
-                                                    let res =
-                                                        self.calc_function(&op.to_string(), &operands);
+                                                    let res = self
+                                                        .calc_function(&op.to_string(), &operands);
                                                     stack.push_back(Item::Literal(res));
                                                     operands.clear();
                                                 }
@@ -115,14 +112,11 @@ impl LogicExecutor for TableData {
                         _ => panic!("WTF"),
                     }
                 }
-
             }
             _ => panic!("Unsupported type of expression"),
         }
 
-        loop {
-
-        }
+        loop {}
     }
 
     fn calc_function(&self, name: &str, args: &[String]) -> String {
@@ -135,19 +129,19 @@ impl LogicExecutor for TableData {
 
         while i < s.len() {
             match &s[i..=i] {
-                c if c.at(0).is_uppercase() && !s.at(i+1).is_alphabetic() => {
-                        if s.at(i+1).is_ascii_digit() {
-                            stack.push_back(Item::Literal(String::from("asd")));
-                            i += 2;
-                        } else if &s[i+1..=i+2] == "^v" {
-                            stack.push_back(Item::Literal(String::from("asd")));
-                            i += 3;
-                        } else if &s[i+1..=i+1] == "^" {
-                            i += 2;
-                            stack.push_back(Item::Literal(String::from("asd")));
-                        } else {
-                            panic!("Unsupported structure for value {}", &s[i+1..=i+1]);
-                        }
+                c if c.at(0).is_uppercase() && !s.at(i + 1).is_alphabetic() => {
+                    if s.at(i + 1).is_ascii_digit() {
+                        stack.push_back(Item::Literal(String::from("asd")));
+                        i += 2;
+                    } else if &s[i + 1..=i + 2] == "^v" {
+                        stack.push_back(Item::Literal(String::from("asd")));
+                        i += 3;
+                    } else if &s[i + 1..=i + 1] == "^" {
+                        i += 2;
+                        stack.push_back(Item::Literal(String::from("asd")));
+                    } else {
+                        panic!("Unsupported structure for value {}", &s[i + 1..=i + 1]);
+                    }
                 }
                 c if c.chars().all(|c| c.is_ascii_alphabetic()) => {
                     if let Some(match_len) = s[i + 1..].find(|c: char| !c.is_ascii_alphabetic()) {
@@ -222,34 +216,33 @@ impl LogicExecutor for TableData {
     }
 
     fn parse_string(&self, s: String, index: u32, name: String) -> String {
-        let mut chars = s.chars();
-        let first_char = chars.nth(0).unwrap();
-        if first_char == '=' {
-            return self.execute_str(remove_first_symbol(&s), index, name);
+        return if &s.as_str()[0..=0] == "=" {
+            self.execute_str(s.as_str().remove_first_symbol(), index, name)
         } else {
-            return String::from(s);
+            s
         }
     }
 
     fn fill_data(&mut self) {
         for i in 0..self.columns.len() {
-            let mut newKeys: Vec<u32> = self.columns[i]
+            let mut new_keys: Vec<u32> = self.columns[i]
                 .values
                 .keys()
                 .map(|x| x.clone())
                 .collect::<Vec<u32>>();
-            newKeys.sort();
+            new_keys.sort();
 
             let mut prev_val: String = "".to_string();
-            for key in newKeys {
+            for key in new_keys {
                 let cell: &String = self.columns[i].values.get(&key).unwrap();
 
                 if cell == "=^^" {
-                    let replaced_prev_values_str = increase_column_digits(prev_val.clone(), key - 1);
+                    let replaced_prev_values_str =
+                        increase_column_digits(prev_val.clone(), key - 1);
                     let calculated_data = self.parse_string(
                         replaced_prev_values_str,
                         key,
-                        String::from(&self.columns[i].name)
+                        String::from(&self.columns[i].name),
                     );
                     self.columns[i].values.insert(12, calculated_data);
                 } else {
@@ -257,7 +250,7 @@ impl LogicExecutor for TableData {
                     let calculated_data = self.parse_string(
                         String::from(cell),
                         key,
-                        String::from(&self.columns[i].name)
+                        String::from(&self.columns[i].name),
                     );
                     self.columns[i].values.insert(12, calculated_data);
                 }

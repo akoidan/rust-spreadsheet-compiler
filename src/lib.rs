@@ -6,8 +6,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let a: TableData = TableData {
-            columns: vec![]
-        };
+        let a: TableData = TableData { columns: vec![] };
     }
 }

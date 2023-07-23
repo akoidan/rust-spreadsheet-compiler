@@ -1,21 +1,20 @@
-mod table_parser;
-mod io_utils;
 mod logic_utils;
-mod table;
 mod regex_helpers;
+mod str_utils;
+mod table;
+mod table_factory;
 
-use io_utils::{file_to_str, str_to_vector};
-use logic_utils::{LogicExecutor};
-use table_parser::{lines_to_table};
+use logic_utils::LogicExecutor;
+use std::fs::read_to_string;
+use str_utils::StrUtils;
+use table_factory::lines_to_table;
 
 extern crate regex;
 extern crate substring;
 
-
 fn main() {
-       let data = file_to_str("/home/andrew/it/my-projects/rust/assets/transactions.csv");
-       let lines = str_to_vector(&data, '\n');
-       let mut table = lines_to_table(lines);
-       table.fill_data();
-
+    let data = read_to_string("/home/andrew/it/my-projects/rust/assets/transactions.csv")
+        .expect("Cannot open file");
+    let mut table = lines_to_table(&data);
+    table.fill_data();
 }
