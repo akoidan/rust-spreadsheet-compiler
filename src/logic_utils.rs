@@ -1,9 +1,9 @@
 use std::collections::VecDeque;
 use std::fmt::Pointer;
 
-use crate::regex_helpers::*;
 use crate::str_utils::{StrUtils};
 use crate::table::*;
+use regex::{Captures, Regex};
 
 struct Command {
     operands: Vec<String>,
@@ -27,6 +27,7 @@ pub trait LogicExecutor {
     fn calc_function(&self, name: &str, args: &[String]) -> String;
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
     fn get_matching_start_zone(item: Item) -> char;
+    fn increase_column_digits(text: String, prev_num: u32) -> String;
 }
 
 impl LogicExecutor for TableData {
@@ -37,6 +38,14 @@ impl LogicExecutor for TableData {
             operator: String::from("asd"),
         };
         return c;
+    }
+
+    fn increase_column_digits(text: String, prev_num: u32) -> String {
+        return Regex::new(format!("[A-Z]{prev_num}+").as_str())
+            .unwrap()
+            .replace_all(&text, |caps: &regex::Captures| {
+                caps[0][0..=0].to_string() + &(prev_num + 1).to_string()
+            }).to_string();
     }
 
     fn get_matching_start_zone(item: Item) -> char {
@@ -238,7 +247,7 @@ impl LogicExecutor for TableData {
 
                 if cell == "=^^" {
                     let replaced_prev_values_str =
-                        increase_column_digits(prev_val.clone(), key - 1);
+                        TableData::increase_column_digits(prev_val.clone(), key - 1);
                     let calculated_data = self.parse_string(
                         replaced_prev_values_str,
                         key,

@@ -1,5 +1,4 @@
 mod logic_utils;
-mod regex_helpers;
 mod str_utils;
 mod table;
 mod table_factory;
