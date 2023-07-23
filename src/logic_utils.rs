@@ -114,29 +114,26 @@ impl LogicExecutor for TableData {
                 operands.push(value);
             } else if let Item::ZoneStart(value) = item_inner {
                 assert_eq!(value, '(', "no opening braces");
-                // 2 possible cases by now
+                //         3 possible cases by now
                 //   =E^v+(E^v*A9) | split(D2, ",") | (2+3)
-                //       +               +
-                if stack.len() > 0 {
-                    let function_name_or_operator = stack
-                        .pop_back()
-                        .unwrap();
-                    if let Item::Token(operation) = function_name_or_operator {
+                //       +               +            +
+                if !stack.is_empty() {
+                    let item_before_braces = stack.pop_back().unwrap();
+                    if let Item::Token(operation) = item_before_braces {
+                        stack.pop_back();
                         let res = self.calc_function(&operation, &operands);
                         stack.push_back(Item::Literal(res));
-                    } else if let Item::Operator(operation) = function_name_or_operator {
-                        stack.push_back(function_name_or_operator);
-                        stack.push_back(Item::Literal(operands[0].to_string()));
+                        break;
                     }
-                } else if operands.len() == 1 {
+                    // if it's not a token, than we should return it to stack
+                    // so we don't break the structure
+                    stack.push_back(item_before_braces);
+                }
+                if operands.len() == 1 {
                     stack.push_back(Item::Literal(operands[0].to_string()))
                 } else {
-                    panic!("Invalid type expression")
+                    panic!("Multiple operands withing braces without operation")
                 }
-                // else if let Item::Operator(operation) = function_name_or_operator {
-                //     // evaluate operation on top loop
-                //     stack.push_back(function_name_or_operator);
-                // }
                 break;
             // part of arithmetic operations, validate the last one,
             // and queue back to the stack in case there are multiple of them
@@ -243,7 +240,7 @@ impl LogicExecutor for TableData {
                 panic!("Unknown symbol {} at position {}", &s[i..i + 1], i);
             }
         }
-        while stack.len() > 0 {
+        while !stack.is_empty() {
             if stack.len() == 1 {
                 return stack
                     .pop_back()
