@@ -3,7 +3,7 @@ use crate::io_utils::{str_to_vector, remove_first_symbol};
 
 use std::collections::HashMap;
 
-fn add_column(table: &mut TableData, name: &str, index: i8) {
+fn add_column(table: &mut TableData, name: &str, index: usize) {
     let letter = char::from(('A' as u8) + (index as u8)); // 0 -> A, 1 -> B, ...
 
     if table.columns.iter().any(|x| x.name == name) {
@@ -33,11 +33,10 @@ pub fn lines_to_table(data: Vec<&str>) -> TableData {
     for line in data {
         let columns = str_to_vector(line, '|');
         let current_is_head: bool = is_head(columns[0]);
-        let mut index: i8 = -1;
         if current_is_head {
             current_head.clear();
-            for column in columns {
-                index += 1;
+            for index in 0..columns.len(){
+                let column = columns[index];
                 if column == "" {
                     continue
                 }
@@ -46,8 +45,8 @@ pub fn lines_to_table(data: Vec<&str>) -> TableData {
                 add_column(&mut table, extract_head_name(column), index);
             }
         } else {
-            for column in columns {
-                index += 1;
+            for index in 0..columns.len() {
+                let column = columns[index];
                 if column == "" {
                     continue
                 }
