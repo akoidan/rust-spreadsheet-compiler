@@ -51,6 +51,7 @@ pub trait LogicExecutor {
     fn fill_data(&mut self);
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>);
     fn calc_function(&self, name: &str, args: &[String]) -> String;
+    fn resolve_literal_at(&self, s: &str, i: usize) -> (String, usize);
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
     fn get_matching_start_zone(item: Item) -> char;
     fn increase_column_digits(text: String, prev_num: u32) -> String;
@@ -177,25 +178,29 @@ impl LogicExecutor for TableData {
         format!("[{}({})]", name, args.join(","))
     }
 
+    fn resolve_literal_at(&self, s: &str, i: usize) -> (String, usize) {
+        if s.at(i + 1).is_ascii_digit() { // cell reference
+            let index = &s.at(i+1).to_string().parse::<usize>().expect("Expected literal number");
+            let value = self.get_by_letter_unmut(s.at(i)).get_cell_by_index(*index);
+            return (value, 2);
+        } else if &s[i + 1..=i + 2] == "^v" {
+            return (String::from("asd"), 3);
+        } else if &s[i + 1..=i + 1] == "^" {
+            return (String::from("asd"), 2);
+        } else {
+            panic!("Unsupported structure for value {}", &s[i + 1..=i + 1]);
+        }
+    }
+
     fn execute_str(&self, s: &str, index: u32, name: String) -> String {
         let mut stack: VecDeque<Item> = VecDeque::new();
         let mut i = 0;
 
         while i < s.len() || stack.len() > 1 {
-            // if literal
-            if s.at(i).is_uppercase() && !s.at(i + 1).is_alphabetic() {
-                if s.at(i + 1).is_ascii_digit() {
-                    stack.push_back(Item::Literal(String::from("asd")));
-                    i += 2;
-                } else if &s[i + 1..=i + 2] == "^v" {
-                    stack.push_back(Item::Literal(String::from("asd")));
-                    i += 3;
-                } else if &s[i + 1..=i + 1] == "^" {
-                    i += 2;
-                    stack.push_back(Item::Literal(String::from("asd")));
-                } else {
-                    panic!("Unsupported structure for value {}", &s[i + 1..=i + 1]);
-                }
+            if s.at(i).is_uppercase() && !s.at(i + 1).is_alphabetic() {  // if literal
+                let (literal, takes_space) = self.resolve_literal_at(s, i);
+                i += takes_space;
+                stack.push_back(Item::Literal(literal))
             } else if s.at(i).is_ascii_alphabetic() {
                 if let Some(match_len) = s[i + 1..].find(|c: char| !c.is_ascii_alphabetic()) {
                     let value = &s[i..i + match_len + 1];
@@ -212,11 +217,11 @@ impl LogicExecutor for TableData {
                 } else {
                     panic!("WTF");
                 }
-            } else if ['(' , '<'].contains(&s.at(i)) {
+            } else if ['(', '<'].contains(&s.at(i)) {
                 let c = &s[i..=i].chars().next().unwrap();
                 stack.push_back(Item::ZoneStart(*c));
                 i += 1;
-            } else if [')',  '>'].contains(&s.at(i)) {
+            } else if [')', '>'].contains(&s.at(i)) {
                 let c = &s[i..=i].chars().next().unwrap();
                 stack.push_back(Item::ZoneEnd(*c));
                 i += 1;
@@ -240,7 +245,7 @@ impl LogicExecutor for TableData {
                 stack.push_back(Item::Operator(s.at(i)));
                 i += 1;
             } else {
-               panic!("Unknown symbol {} at position {}", &s[i..i + 1], i);
+                panic!("Unknown symbol {} at position {}", &s[i..i + 1], i);
             }
         }
         assert_eq!(stack.len(), 1, "Unknown structure");
