@@ -18,7 +18,7 @@ mod tests {
     #[test]
     fn parses_single_forumla() {
         let a = construct_table();
-        a.parse_string(String::from("=text(bte(@adjusted_cost<1>, @cost_threshold<1>)"), 16, String::from("cost_too_high"));
+        a.parse_string(String::from("=text(bte(@adjusted_cost<1>, @cost_threshold<1>))"), 16, String::from("cost_too_high"));
     }
 
     #[test]

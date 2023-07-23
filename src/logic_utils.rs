@@ -177,7 +177,7 @@ impl LogicExecutor for TableData {
             .unwrap()
             .get_end_zone_character();
 
-        if end_zone_symbol == '<' {  // @adjusted_cost<1>
+        if end_zone_symbol == '>' {  // @adjusted_cost<1>
             self.evaluate_column_reference(stack);
         } else { // split(D2, ",") ||||||    (E^v*A9)
             self.evaluate_curly_zone(stack);
