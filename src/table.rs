@@ -34,10 +34,10 @@ impl ColumnGetter for Column {
 }
 
 pub trait TableDataGetter {
+    fn add_column(&mut self, name: &str, index: usize);
     fn get_by_name<'a>(&'a mut self, name: &str) -> &'a mut Column;
     fn get_by_name_unmut<'a>(&'a self, name: &str) -> &'a Column;
-    fn add_column(&mut self, name: &str, index: usize);
-    fn get_by_letter_unmut<'a>(&'a self, letter: char) -> &'a Column;
+    fn get_by_coordinate(&self, letter: char, row_number: &u32) -> String;
 }
 
 impl TableDataGetter for TableData {
@@ -60,8 +60,21 @@ impl TableDataGetter for TableData {
         let index = self.columns.iter().position(|x| x.name == name);
         return &self.columns[index.expect(&format!("column {name} doesnt exist"))];
     }
-    fn get_by_letter_unmut<'a>(&'a self, letter: char) -> &'a Column {
-        let index = self.columns.iter().position(|x| x.letter == letter);
-        return &self.columns[index.expect(&format!("column by letter {letter} doesnt exist"))];
+
+    fn get_by_coordinate(&self, letter: char, row_number: &u32) -> String {
+        for column in &self.columns {
+            if column.letter != letter {
+                continue
+            }
+            let row =  column.values.get(row_number);
+            if row.is_some() {
+                return column
+                    .values
+                    .get(row_number)
+                    .unwrap()
+                    .to_string();
+            }
+        }
+        panic!("Referenced to non-existed column {}{}", letter, row_number);
     }
 }

@@ -194,8 +194,8 @@ impl LogicExecutor for TableData {
 
     fn resolve_literal_at(&self, s: &str, i: usize) -> (String, usize) {
         if s.at(i + 1).is_ascii_digit() { // cell reference
-            let index = &s.at(i + 1).to_string().parse::<usize>().expect("Expected literal number");
-            let value = self.get_by_letter_unmut(s.at(i)).get_cell_by_index(*index);
+            let index = &s.at(i + 1).to_string().parse::<u32>().expect("Expected literal number");
+            let value = self.get_by_coordinate(s.at(i), index);
             return (value, 2);
         } else if &s[i + 1..=i + 2] == "^v" {
             return (String::from("asd"), 3);
