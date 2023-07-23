@@ -78,15 +78,6 @@ pub trait LogicExecutor {
 }
 
 impl LogicExecutor for TableData {
-    // fn get_command(s: &str) -> Command {
-    //     let operands = vec![];
-    //     let c = Command {
-    //         operands,
-    //         operator: String::from("asd"),
-    //     };
-    //     return c;
-    // }
-
     fn increase_column_digits(text: String, prev_num: u32) -> String {
         return Regex::new(format!("[A-Z]{prev_num}+").as_str())
             .unwrap()
@@ -123,35 +114,30 @@ impl LogicExecutor for TableData {
                 operands.push(value);
             } else if let Item::ZoneStart(value) = item_inner {
                 assert_eq!(value, '(', "no opening braces");
-                let name = stack
-                    .pop_back()
-                    .expect("function name")
-                    .get_token();
-                let res = self.calc_function(&name, &operands);
-                stack.push_back(Item::Literal(res));
-                break;
-
-                // if let Some(name_item) = stack.pop_back() {
-                //     match name_item {
-                //         Item::Token(name) => {
-                //         }
-                //         Item::Operator(op) => {
-                //             if let Some(name_2_item) = stack.pop_back() {
-                //                 match name_2_item {
-                //                     Item::Literal(val) => {
-                //                         operands.push(val);
-                //                         let res = self
-                //                             .calc_function(&op.to_string(), &operands);
-                //                         stack.push_back(Item::Literal(res));
-                //                         operands.clear();
-                //                     }
-                //                     _ => panic!("WTF"),
-                //                 }
-                //             }
-                //         }
-                //         _ => panic!("WTF"),
-                //     }
+                // 2 possible cases by now
+                //   =E^v+(E^v*A9) | split(D2, ",") | (2+3)
+                //       +               +
+                if stack.len() > 0 {
+                    let function_name_or_operator = stack
+                        .pop_back()
+                        .unwrap();
+                    if let Item::Token(operation) = function_name_or_operator {
+                        let res = self.calc_function(&operation, &operands);
+                        stack.push_back(Item::Literal(res));
+                    } else if let Item::Operator(operation) = function_name_or_operator {
+                        stack.push_back(function_name_or_operator);
+                        stack.push_back(Item::Literal(operands[0].to_string()));
+                    }
+                } else if operands.len() == 1 {
+                    stack.push_back(Item::Literal(operands[0].to_string()))
+                } else {
+                    panic!("Invalid type expression")
+                }
+                // else if let Item::Operator(operation) = function_name_or_operator {
+                //     // evaluate operation on top loop
+                //     stack.push_back(function_name_or_operator);
                 // }
+                break;
             // part of arithmetic operations, validate the last one,
             // and queue back to the stack in case there are multiple of them
             // e.g. 2+3+4+6
@@ -163,7 +149,6 @@ impl LogicExecutor for TableData {
                 operands.push(left_operand.to_string());
                 let res = self.evaluate_arithmetic(operator, &operands);
                 operands.clear();
-                operands.push(res.clone());
                 stack.push_back(Item::Literal(res));
             } else {
                 panic!("Invalid operation")
@@ -209,7 +194,7 @@ impl LogicExecutor for TableData {
     fn execute_str(&self, s: &str, index: u32, name: String) -> String {
         let mut stack: VecDeque<Item> = VecDeque::new();
         let mut i = 0;
-        while i < s.len() || stack.len() > 1 {
+        while i < s.len() {
             // if resolved to literal
             if s.at(i).is_uppercase() && !s.at(i + 1).is_alphabetic() {
                 let (literal, literal_length) = self.resolve_literal_at(s, i);
@@ -258,18 +243,25 @@ impl LogicExecutor for TableData {
                 panic!("Unknown symbol {} at position {}", &s[i..i + 1], i);
             }
         }
-
-        return stack
-            .pop_back()
-            .expect("Stack evaluated to 0")
-            .get_literal_as_text()
-            .to_string();
+        while stack.len() > 0 {
+            if stack.len() == 1 {
+                return stack
+                    .pop_back()
+                    .expect("Stack evaluated to 0")
+                    .get_literal_as_text()
+                    .to_string();
+            }
+            stack.push_front(Item::ZoneStart('('));
+            self.evaluate_curly_zone(&mut stack);
+        }
+        panic!("Invalid expression");
     }
 
     fn parse_string(&self, s: String, index: u32, name: String) -> String {
         return if &s.as_str()[0..=0] == "=" {
             // this formula should be evaluated
             self.execute_str(s.as_str().remove_first_symbol(), index, name)
+
         } else {
             s
         };

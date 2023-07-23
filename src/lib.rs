@@ -36,4 +36,11 @@ mod tests {
         println!("{}", value);
     }
 
+    #[test]
+    fn parses_single_forumla_4() {
+        let a = construct_table();
+        let value = a.parse_string(String::from("=2+4"), 7, String::from("adjusted_cost"));
+        println!("{}", value);
+    }
+
 }

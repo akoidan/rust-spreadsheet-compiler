@@ -35,7 +35,7 @@ impl StrUtils for &str {
     fn next_digit_length(&self, start_index: usize) -> usize {
         return self[start_index..]
             .find(|c: char| !c.is_ascii_digit())
-            .expect("digit doesn't end");
+            .unwrap_or(self.len() - start_index)
     }
 
     fn next_quote_length(&self, start_index: usize) -> usize {
