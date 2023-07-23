@@ -120,7 +120,6 @@ impl LogicExecutor for TableData {
                 if !stack.is_empty() {
                     let item_before_braces = stack.pop_back().unwrap();
                     if let Item::Token(operation) = item_before_braces {
-                        stack.pop_back();
                         let res = self.calc_function(&operation, &operands);
                         stack.push_back(Item::Literal(res));
                         break;
