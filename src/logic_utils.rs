@@ -67,14 +67,15 @@ pub trait LogicExecutor {
     // fn get_command(s: &str) -> Command;
     fn execute_str(&self, s: &str, index: u32, name: String) -> String;
     fn fill_data(&mut self);
-    fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>);
-    fn calc_function(&self, name: &str, args: &[String]) -> String;
+    fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize);
+    fn calc_function(&self, name: &str, args: &[String], inc_from: &mut usize) -> String;
     fn evaluate_arithmetic(&self, operator: char, args: &[String]) -> String;
     fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (String, usize);
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
     fn increase_column_digits(text: String, prev_num: u32) -> String;
     fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>);
-    fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>);
+    fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize);
+    fn inc_from(&self, args: &[String], inc_from: &mut usize) -> String;
 }
 
 impl LogicExecutor for TableData {
@@ -106,7 +107,7 @@ impl LogicExecutor for TableData {
         stack.push_back(Item::Literal(res));
     }
 
-    fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>) {
+    fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize) {
         let mut operands: Vec<String> = vec![];
         loop {
             let item_inner = stack.pop_back().expect("No matching pair of ')' found");
@@ -120,7 +121,7 @@ impl LogicExecutor for TableData {
                 if !stack.is_empty() {
                     let item_before_braces = stack.pop_back().unwrap();
                     if let Item::Token(operation) = item_before_braces {
-                        let res = self.calc_function(&operation, &operands);
+                        let res = self.calc_function(&operation, &operands, inc_from);
                         stack.push_back(Item::Literal(res));
                         break;
                     }
@@ -152,7 +153,7 @@ impl LogicExecutor for TableData {
         }
     }
 
-    fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>) {
+    fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize) {
         let end_zone_symbol = stack
             .pop_back()
             .unwrap()
@@ -161,12 +162,24 @@ impl LogicExecutor for TableData {
         if end_zone_symbol == '>' {  // @adjusted_cost<1>
             self.evaluate_column_reference(stack);
         } else { // split(D2, ",") ||||||    (E^v*A9)
-            self.evaluate_curly_zone(stack);
+            self.evaluate_curly_zone(stack, inc_from);
         }
     }
 
-    fn calc_function(&self, name: &str, args: &[String]) -> String {
-        format!("[{}({})]", name, args.join(","))
+    fn calc_function(&self, name: &str, args: &[String], inc_from: &mut usize) -> String {
+        if (name == "incFrom") {
+            return self.inc_from(args, inc_from);
+        } else {
+            return format!("[{}({})]", name, args.join(","));
+        }
+
+    }
+
+    fn inc_from(&self, args: &[String], inc_from: &mut usize) -> String {
+        assert_eq!(args.len(), 1, "incFrom accept 1 arg");
+        let i = args[0].parse::<usize>().expect(&format!("Cannot cast {} to int", args[0]));
+        *inc_from =  *inc_from + i;
+        return inc_from.to_string();
     }
 
     fn evaluate_arithmetic(&self, operator: char, args: &[String]) -> String {
@@ -204,6 +217,7 @@ impl LogicExecutor for TableData {
 
     fn execute_str(&self, s: &str, index: u32, name: String) -> String {
         let mut stack: VecDeque<Item> = VecDeque::new();
+        let mut inc_from: usize = 0; // for incFrom(
         let mut i = 0;
         while i < s.len() {
             // if resolved to literal
@@ -231,7 +245,7 @@ impl LogicExecutor for TableData {
             } else if [')', '>'].contains(&s.at(i)) {
                 stack.push_back(Item::ZoneEnd(s.at(i)));
                 i += 1;
-                self.revaluate_from_end_zone(&mut stack);
+                self.revaluate_from_end_zone(&mut stack, &mut inc_from);
                 // if string literal
             } else if s.at(i) == '\"' {
                 let literal_length = s.next_quote_length(i + 1);
@@ -263,7 +277,7 @@ impl LogicExecutor for TableData {
                     .to_string();
             }
             stack.push_front(Item::ZoneStart('('));
-            self.evaluate_curly_zone(&mut stack);
+            self.evaluate_curly_zone(&mut stack, &mut inc_from);
         }
         panic!("Invalid expression");
     }
