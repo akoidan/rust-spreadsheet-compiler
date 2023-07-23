@@ -15,7 +15,8 @@ pub fn substr(string: String, start: u32, end: u32) -> String {
     let slice = &string[start..end];
     return String::from(slice);
 }
-pub fn remove_first_symbol<'a>(s: &'a str) -> &'a str {
+
+pub fn remove_first_symbol(s: &str) -> &str {
     return &s[1..s.len()];
 }
 

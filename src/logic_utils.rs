@@ -5,16 +5,10 @@ use crate::table::*;
 use crate::regex_helpers::*;
 use crate::io_utils::*;
 
-fn remove_first_symbol<'a>(s: &'a str) -> &'a str {
-    return &s[1..s.len()];
-}
 
-pub fn extract_head_name(column: &str) -> &str {
-    return remove_first_symbol(column);
-}
-
-pub fn is_head(col: &str) -> bool {
-    return col.starts_with("!");
+struct Command {
+    operands: Vec<String>,
+    operator: String,
 }
 
 enum Item {
@@ -33,12 +27,7 @@ pub trait LogicExecutor {
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>);
     fn calc_function(&self, name: &str, args: &[String]) -> String;
     fn revaluate_from_literal(&self,stack: &mut VecDeque<Item>);
-    fn get_matching_start_zone(&self, item: Item) -> char;
-}
-
-struct Command {
-    operands: Vec<String>,
-    operator: String,
+    fn get_matching_start_zone(item: Item) -> char;
 }
 
 impl LogicExecutor for TableData {
@@ -51,7 +40,7 @@ impl LogicExecutor for TableData {
         return c;
     }
 
-    fn get_matching_start_zone(&self, item: Item) -> char {
+    fn get_matching_start_zone(item: Item) -> char {
         let start_zone_value = match item {
             Item::ZoneEnd(c) => match c {
                 '>' => '<',
@@ -75,7 +64,7 @@ impl LogicExecutor for TableData {
                 // ...
             }
             Item::ZoneEnd(val) => {
-                let start_zone_value = self.get_matching_start_zone(item);
+                let start_zone_value = TableData::get_matching_start_zone(item);
                 loop {
                     if stack.is_empty() {
                         panic!("WTF");

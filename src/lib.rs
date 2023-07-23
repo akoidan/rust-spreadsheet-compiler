@@ -1,8 +1,13 @@
+mod table;
+
 #[cfg(test)]
 mod tests {
+    use crate::table::TableData;
+
     #[test]
     fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+        let a: TableData = TableData {
+            columns: vec![]
+        };
     }
 }
