@@ -18,6 +18,32 @@ enum Item {
     ZoneEnd(char),
 }
 
+impl Item {
+    fn get_literal_as_number(&self) -> u32 {
+        if let Item::Literal(s) = self {
+            s.as_str().parse::<u32>().expect("Expected literal number")
+        } else {
+            panic!("Current item should be a literal");
+        }
+    }
+
+    fn get_token(&self) -> String {
+        if let Item::Token(s) = self {
+            return String::from(s)
+        } else {
+            panic!("Current item should be a token");
+        }
+    }
+
+    fn expect_start_of(&self, char_value: char) {
+        if let Item::ZoneStart(s) = self {
+            assert_eq!(s, &char_value, "Column reference should preceed <");
+        } else {
+            panic!("Current item should be literal");
+        }
+    }
+}
+
 pub trait LogicExecutor {
     fn parse_string(&self, s: String, index: u32, name: String) -> String;
     fn get_command(s: &str) -> Command;
@@ -28,6 +54,7 @@ pub trait LogicExecutor {
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
     fn get_matching_start_zone(item: Item) -> char;
     fn increase_column_digits(text: String, prev_num: u32) -> String;
+    fn evaluate_column_reference(&self, item: Item, stack: &mut VecDeque<Item>) -> Item;
 }
 
 impl LogicExecutor for TableData {
@@ -62,23 +89,46 @@ impl LogicExecutor for TableData {
 
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>) {}
 
+    fn evaluate_column_reference(&self, item: Item, stack: &mut VecDeque<Item>) -> Item {
+        let column_with_index = stack.pop_back().expect("column reference should predicate index");
+        let column_index = column_with_index.get_literal_as_number();
+        stack
+            .pop_back()
+            .expect("Column ref should precede index")
+            .expect_start_of('<');
+       let column_name = stack
+           .pop_back()
+           .expect("Column ref should precede name")
+           .get_token();
+        return Item::Literal(
+            String::from(
+                self.get_by_name(&column_name)
+                    .values
+                    .get(&column_index)
+                    .expect("wtf")
+            )
+        )
+    }
+
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>) {
         let item = stack.pop_back().unwrap();
         let mut operands = Vec::new();
         match item {
             Item::Literal(val) => {
-                // ...
+                println!("WTF");
+            }
+            Item::ZoneEnd(val) if val == '>' => {
+                stack.push_back(self.evaluate_column_reference(item, stack));
             }
             Item::ZoneEnd(val) => {
                 let start_zone_value = TableData::get_matching_start_zone(item);
                 loop {
-                    if stack.is_empty() {
-                        panic!("WTF");
-                    }
-
+                    assert!(!stack.is_empty(), "WTF");
                     let item_inner = stack.pop_back().unwrap();
                     match item_inner {
+
                         Item::Literal(val) => operands.push(val),
+
                         Item::ZoneStart(c) if c == start_zone_value => {
                             if let Some(name_item) = stack.pop_back() {
                                 match name_item {
@@ -124,8 +174,6 @@ impl LogicExecutor for TableData {
             }
             _ => panic!("Unsupported type of expression"),
         }
-
-        loop {}
     }
 
     fn calc_function(&self, name: &str, args: &[String]) -> String {
@@ -191,15 +239,10 @@ impl LogicExecutor for TableData {
                     }
                 }
                 "@" => {
-                    if let Some(match_len) =
-                        s[i + 1..].find(|c: char| c == '_' || c.is_ascii_alphabetic())
-                    {
-                        let value = &s[i..i + match_len + 2];
-                        stack.push_back(Item::Token(value.to_string()));
-                        i += match_len + 2;
-                    } else {
-                        panic!("WTF {i}");
-                    }
+                    let match_len = s.next_word_length_underscore(i+1).expect("Wtf");
+                    let value = &s[i..i + match_len + 1];
+                    stack.push_back(Item::Token(value.to_string()));
+                    i += match_len + 1;
                 }
                 " " | "," => {
                     i += 1;
@@ -208,13 +251,10 @@ impl LogicExecutor for TableData {
                     stack.push_back(Item::Operator(op.chars().next().unwrap()));
                     i += 1;
                 }
-                _ => panic!("Unkown symbol {} at position {}", &s[i..i + 1], i),
+                _ => panic!("Unknown symbol {} at position {}", &s[i..i + 1], i),
             }
         }
-
-        if stack.len() > 1 {
-            panic!("Lacking end statement");
-        }
+        assert_eq!(stack.len(), 1, "Unknown structure");
 
         match stack.pop_back().unwrap() {
             Item::Literal(val) => {

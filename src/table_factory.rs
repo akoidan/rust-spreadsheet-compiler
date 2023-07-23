@@ -35,7 +35,7 @@ pub fn lines_to_table(csv_str: &str) -> TableData {
                 if columns[column_index] == "" {
                     continue;
                 }
-                assert!(!is_head(columns[column_index]), "Invalid head at index {}", row_index);
+                assert!(is_head(columns[column_index]), "Invalid head at index {}", row_index);
                 current_head.push(String::from(columns[column_index].remove_first_symbol()));
                 add_column(&mut table, columns[column_index].remove_first_symbol(), column_index);
             }
