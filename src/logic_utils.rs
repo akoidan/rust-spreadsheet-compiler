@@ -27,6 +27,14 @@ impl Item {
         }
     }
 
+    fn get_literal_as_text(&self) -> &str {
+        if let Item::Literal(s) = self {
+            return s.as_str();
+        } else {
+            panic!("Current item should be a literal");
+        }
+    }
+
     fn get_token(&self) -> String {
         if let Item::Token(s) = self {
             return String::from(s);
@@ -180,7 +188,7 @@ impl LogicExecutor for TableData {
 
     fn resolve_literal_at(&self, s: &str, i: usize) -> (String, usize) {
         if s.at(i + 1).is_ascii_digit() { // cell reference
-            let index = &s.at(i+1).to_string().parse::<usize>().expect("Expected literal number");
+            let index = &s.at(i + 1).to_string().parse::<usize>().expect("Expected literal number");
             let value = self.get_by_letter_unmut(s.at(i)).get_cell_by_index(*index);
             return (value, 2);
         } else if &s[i + 1..=i + 2] == "^v" {
@@ -195,52 +203,48 @@ impl LogicExecutor for TableData {
     fn execute_str(&self, s: &str, index: u32, name: String) -> String {
         let mut stack: VecDeque<Item> = VecDeque::new();
         let mut i = 0;
-
         while i < s.len() || stack.len() > 1 {
-            if s.at(i).is_uppercase() && !s.at(i + 1).is_alphabetic() {  // if literal
-                let (literal, takes_space) = self.resolve_literal_at(s, i);
-                i += takes_space;
+            // if resolved to literal
+            if s.at(i).is_uppercase() && !s.at(i + 1).is_alphabetic() {
+                let (literal, literal_length) = self.resolve_literal_at(s, i);
+                i += literal_length;
                 stack.push_back(Item::Literal(literal))
+            // if token
             } else if s.at(i).is_ascii_alphabetic() {
-                if let Some(match_len) = s[i + 1..].find(|c: char| !c.is_ascii_alphabetic()) {
-                    let value = &s[i..i + match_len + 1];
-                    stack.push_back(Item::Token(value.to_string()));
-                    i += match_len + 1;
-                } else {
-                    panic!("WTF");
-                }
+                let token_length = s.next_word_length(i+1);
+                let token = s[i..i + token_length + 1].to_string();
+                stack.push_back(Item::Token(token));
+                i += token_length + 1;
+            // if number
             } else if s.at(i).is_ascii_digit() {
-                if let Some(match_len) = s[i + 1..].find(|c: char| !c.is_ascii_digit()) {
-                    let value = &s[i..i + match_len + 1];
-                    stack.push_back(Item::Literal(value.to_string()));
-                    i += match_len + 1;
-                } else {
-                    panic!("WTF");
-                }
+                let digit_length = s.next_digit_length(i+1);
+                let digit = &s[i..i + digit_length + 1];
+                stack.push_back(Item::Literal(digit.to_string()));
+                i += digit_length + 1;
+            // if expression starts
             } else if ['(', '<'].contains(&s.at(i)) {
-                let c = &s[i..=i].chars().next().unwrap();
-                stack.push_back(Item::ZoneStart(*c));
+                stack.push_back(Item::ZoneStart(s.at(i)));
                 i += 1;
+            // if expression end, here we need to evaluated all inside of it.
             } else if [')', '>'].contains(&s.at(i)) {
-                let c = &s[i..=i].chars().next().unwrap();
-                stack.push_back(Item::ZoneEnd(*c));
+                stack.push_back(Item::ZoneEnd(s.at(i)));
                 i += 1;
                 self.revaluate_from_end_zone(&mut stack);
+            // if string literal
             } else if s.at(i) == '\"' {
-                if let Some(value) = s[i + 1..].find('\"') {
-                    let val = &s[i..i + value + 2];
-                    stack.push_back(Item::Literal(val.to_string()));
-                    i += value + 2;
-                } else {
-                    panic!("WTF");
-                }
+                let literal_length =  s.next_quote_length(i+1);
+                let val = &s[i..i + literal_length + 2]; // 2 is start+end quote
+                stack.push_back(Item::Literal(val.to_string()));
+                i += literal_length + 2; // "asd" = 3 + 2
+            // if column reference
             } else if s.at(i) == '@' {
-                let match_len = s.next_word_length_underscore(i + 1).expect("Wtf");
-                let value = &s[i..i + match_len + 1];
-                stack.push_back(Item::Token(value.to_string()));
-                i += match_len + 1;
+                let token_length = s.next_word_length_underscore(i + 1);
+                stack.push_back(Item::Token(s[i..i + token_length + 1].to_string()));
+                i += token_length + 1; // @ + word itself
+            // ignore separators
             } else if [' ', ','].contains(&s.at(i)) {
                 i += 1;
+            // arithmetic operations
             } else if ['+', '*', '-', '/'].contains(&s.at(i)) {
                 stack.push_back(Item::Operator(s.at(i)));
                 i += 1;
@@ -248,14 +252,12 @@ impl LogicExecutor for TableData {
                 panic!("Unknown symbol {} at position {}", &s[i..i + 1], i);
             }
         }
-        assert_eq!(stack.len(), 1, "Unknown structure");
 
-        match stack.pop_back().unwrap() {
-            Item::Literal(val) => {
-                return val;
-            }
-            _ => panic!("WTF"),
-        }
+        return stack
+            .pop_back()
+            .expect("Stack evaluated to 0")
+            .get_literal_as_text()
+            .to_string();
     }
 
     fn parse_string(&self, s: String, index: u32, name: String) -> String {
