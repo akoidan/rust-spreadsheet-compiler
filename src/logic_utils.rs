@@ -73,8 +73,8 @@ pub trait LogicExecutor {
     fn resolve_literal_at(&self, s: &str, i: usize) -> (String, usize);
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
     fn increase_column_digits(text: String, prev_num: u32) -> String;
-    fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>) -> Item;
-    fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>) -> Item;
+    fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>);
+    fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>);
 }
 
 impl LogicExecutor for TableData {
@@ -97,7 +97,7 @@ impl LogicExecutor for TableData {
 
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>) {}
 
-    fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>) -> Item {
+    fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>) {
         let column_with_index = stack.pop_back().expect("column reference should predicate index");
         let column_index = column_with_index.get_literal_as_number();
         stack
@@ -112,10 +112,10 @@ impl LogicExecutor for TableData {
             self
                 .get_by_name_unmut(column_name.as_str().remove_first_symbol()) // drop @
                 .get_cell_by_index(column_index));
-        return Item::Literal(res);
+        stack.push_back(Item::Literal(res));
     }
 
-    fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>) -> Item {
+    fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>) {
         let mut operands: Vec<String> = vec![];
         loop {
             let item_inner = stack.pop_back().expect("No matching pair of ')' found");
@@ -123,13 +123,13 @@ impl LogicExecutor for TableData {
                 operands.push(value);
             } else if let Item::ZoneStart(value) = item_inner {
                 assert_eq!(value, '(', "no opening braces");
-                assert_eq!(operands.len(), 0, "Uncalculated expression on the start");
                 let name = stack
                     .pop_back()
                     .expect("function name")
                     .get_token();
                 let res = self.calc_function(&name, &operands);
                 stack.push_back(Item::Literal(res));
+                break;
 
                 // if let Some(name_item) = stack.pop_back() {
                 //     match name_item {
@@ -162,8 +162,9 @@ impl LogicExecutor for TableData {
                     .get_literal_as_text().to_string();
                 operands.push(left_operand.to_string());
                 let res = self.evaluate_arithmetic(operator, &operands);
-                stack.push_back(Item::Literal(res));
                 operands.clear();
+                operands.push(res.clone());
+                stack.push_back(Item::Literal(res));
             } else {
                 panic!("Invalid operation")
             }
@@ -175,15 +176,11 @@ impl LogicExecutor for TableData {
             .pop_back()
             .unwrap()
             .get_end_zone_character();
-        // @adjusted_cost<1>
-        if end_zone_symbol == '<' {
-            let column_res = self.evaluate_column_reference(stack);
-            stack.push_back(column_res);
-            // split(D2, ",")
-            // (E^v*A9)
-        } else {
-            let column_res = self.evaluate_curly_zone(stack);
-            stack.push_back(column_res);
+
+        if end_zone_symbol == '<' {  // @adjusted_cost<1>
+            self.evaluate_column_reference(stack);
+        } else { // split(D2, ",") ||||||    (E^v*A9)
+            self.evaluate_curly_zone(stack);
         }
     }
 
