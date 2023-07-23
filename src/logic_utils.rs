@@ -54,7 +54,7 @@ pub trait LogicExecutor {
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
     fn get_matching_start_zone(item: Item) -> char;
     fn increase_column_digits(text: String, prev_num: u32) -> String;
-    fn evaluate_column_reference(&self, item: Item, stack: &mut VecDeque<Item>) -> Item;
+    fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>) -> Item;
 }
 
 impl LogicExecutor for TableData {
@@ -89,7 +89,7 @@ impl LogicExecutor for TableData {
 
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>) {}
 
-    fn evaluate_column_reference(&self, item: Item, stack: &mut VecDeque<Item>) -> Item {
+    fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>) -> Item {
         let column_with_index = stack.pop_back().expect("column reference should predicate index");
         let column_index = column_with_index.get_literal_as_number();
         stack
@@ -102,7 +102,7 @@ impl LogicExecutor for TableData {
            .get_token();
         return Item::Literal(
             String::from(
-                self.get_by_name(&column_name)
+                self.get_by_name_unmut(&column_name)
                     .values
                     .get(&column_index)
                     .expect("wtf")
@@ -118,7 +118,8 @@ impl LogicExecutor for TableData {
                 println!("WTF");
             }
             Item::ZoneEnd(val) if val == '>' => {
-                stack.push_back(self.evaluate_column_reference(item, stack));
+                let column_res = self.evaluate_column_reference(stack);
+                stack.push_back(column_res);
             }
             Item::ZoneEnd(val) => {
                 let start_zone_value = TableData::get_matching_start_zone(item);
