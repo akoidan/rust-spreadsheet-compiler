@@ -3,20 +3,6 @@ use crate::table::{Column, TableData, TableDataGetter};
 
 use std::collections::HashMap;
 
-fn add_column(table: &mut TableData, name: &str, index: usize) {
-    let letter = char::from(('A' as u8) + (index as u8)); // 0 -> A, 1 -> B, ...
-    assert!(
-        !table.columns.iter().any(|x| x.name == name),
-        "Column {} already exists",
-        name
-    );
-    table.columns.push(Column {
-        letter: String::from(letter.to_string()),
-        name: String::from(name),
-        values: HashMap::new(),
-    });
-}
-
 fn is_head(col: &str) -> bool {
     return col.starts_with("!");
 }
@@ -37,7 +23,7 @@ pub fn lines_to_table(csv_str: &str) -> TableData {
                 }
                 assert!(is_head(columns[column_index]), "Invalid head at index {}", row_index);
                 current_head.push(String::from(columns[column_index].remove_first_symbol()));
-                add_column(&mut table, columns[column_index].remove_first_symbol(), column_index);
+                table.add_column(columns[column_index].remove_first_symbol(), column_index);
             }
         } else {
             for column_index in 0..columns.len() {
@@ -45,7 +31,7 @@ pub fn lines_to_table(csv_str: &str) -> TableData {
                     continue;
                 }
                 let x = table.get_by_name(&current_head[column_index]);
-                x.values.insert(row_index as u32, String::from(columns[column_index]));
+                x.values.insert(row_index as u32 +1, String::from(columns[column_index]));
             }
         }
     }

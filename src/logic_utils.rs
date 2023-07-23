@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::fmt::Pointer;
 
 use crate::str_utils::{StrUtils};
-use crate::table::*;
+use crate::table::{TableDataGetter, TableData, ColumnGetter};
 use regex::{Captures, Regex};
 
 struct Command {
@@ -19,9 +19,9 @@ enum Item {
 }
 
 impl Item {
-    fn get_literal_as_number(&self) -> u32 {
+    fn get_literal_as_number(&self) -> usize {
         if let Item::Literal(s) = self {
-            s.as_str().parse::<u32>().expect("Expected literal number")
+            s.as_str().parse::<usize>().expect("Expected literal number")
         } else {
             panic!("Current item should be a literal");
         }
@@ -29,7 +29,7 @@ impl Item {
 
     fn get_token(&self) -> String {
         if let Item::Token(s) = self {
-            return String::from(s)
+            return String::from(s);
         } else {
             panic!("Current item should be a token");
         }
@@ -96,18 +96,15 @@ impl LogicExecutor for TableData {
             .pop_back()
             .expect("Column ref should precede index")
             .expect_start_of('<');
-       let column_name = stack
-           .pop_back()
-           .expect("Column ref should precede name")
-           .get_token();
-        return Item::Literal(
-            String::from(
-                self.get_by_name_unmut(&column_name)
-                    .values
-                    .get(&column_index)
-                    .expect("wtf")
-            )
-        )
+        let column_name = stack
+            .pop_back()
+            .expect("Column ref should precede name")
+            .get_token();
+        let res = String::from(
+            self
+                .get_by_name_unmut(column_name.as_str().remove_first_symbol()) // drop @
+                .get_cell_by_index(column_index));
+        return Item::Literal(res);
     }
 
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>) {
@@ -120,14 +117,13 @@ impl LogicExecutor for TableData {
             Item::ZoneEnd(val) if val == '>' => {
                 let column_res = self.evaluate_column_reference(stack);
                 stack.push_back(column_res);
+                return;
             }
-            Item::ZoneEnd(val) => {
+            Item::ZoneEnd(val)  if val == '>' => {
                 let start_zone_value = TableData::get_matching_start_zone(item);
                 loop {
-                    assert!(!stack.is_empty(), "WTF");
-                    let item_inner = stack.pop_back().unwrap();
+                    let item_inner = stack.pop_back().expect("WTF");
                     match item_inner {
-
                         Item::Literal(val) => operands.push(val),
 
                         Item::ZoneStart(c) if c == start_zone_value => {
@@ -185,74 +181,66 @@ impl LogicExecutor for TableData {
         let mut stack: VecDeque<Item> = VecDeque::new();
         let mut i = 0;
 
-        while i < s.len() {
-            match &s[i..=i] {
-                c if c.at(0).is_uppercase() && !s.at(i + 1).is_alphabetic() => {
-                    if s.at(i + 1).is_ascii_digit() {
-                        stack.push_back(Item::Literal(String::from("asd")));
-                        i += 2;
-                    } else if &s[i + 1..=i + 2] == "^v" {
-                        stack.push_back(Item::Literal(String::from("asd")));
-                        i += 3;
-                    } else if &s[i + 1..=i + 1] == "^" {
-                        i += 2;
-                        stack.push_back(Item::Literal(String::from("asd")));
-                    } else {
-                        panic!("Unsupported structure for value {}", &s[i + 1..=i + 1]);
-                    }
+        while i < s.len() || stack.len() > 1 {
+            // if literal
+            if s.at(i).is_uppercase() && !s.at(i + 1).is_alphabetic() {
+                if s.at(i + 1).is_ascii_digit() {
+                    stack.push_back(Item::Literal(String::from("asd")));
+                    i += 2;
+                } else if &s[i + 1..=i + 2] == "^v" {
+                    stack.push_back(Item::Literal(String::from("asd")));
+                    i += 3;
+                } else if &s[i + 1..=i + 1] == "^" {
+                    i += 2;
+                    stack.push_back(Item::Literal(String::from("asd")));
+                } else {
+                    panic!("Unsupported structure for value {}", &s[i + 1..=i + 1]);
                 }
-                c if c.chars().all(|c| c.is_ascii_alphabetic()) => {
-                    if let Some(match_len) = s[i + 1..].find(|c: char| !c.is_ascii_alphabetic()) {
-                        let value = &s[i..i + match_len + 1];
-                        stack.push_back(Item::Token(value.to_string()));
-                        i += match_len + 1;
-                    } else {
-                        panic!("WTF");
-                    }
-                }
-                c if c.chars().all(|c| c.is_ascii_digit()) => {
-                    if let Some(match_len) = s[i + 1..].find(|c: char| !c.is_ascii_digit()) {
-                        let value = &s[i..i + match_len + 1];
-                        stack.push_back(Item::Literal(value.to_string()));
-                        i += match_len + 1;
-                    } else {
-                        panic!("WTF");
-                    }
-                }
-                "(" | "<" => {
-                    let c = &s[i..=i].chars().next().unwrap();
-                    stack.push_back(Item::ZoneStart(*c));
-                    i += 1;
-                }
-                ")" | ">" => {
-                    let c = &s[i..=i].chars().next().unwrap();
-                    stack.push_back(Item::ZoneEnd(*c));
-                    i += 1;
-                    self.revaluate_from_end_zone(&mut stack);
-                }
-                "\"" => {
-                    if let Some(value) = s[i + 1..].find('\"') {
-                        let val = &s[i..i + value + 2];
-                        stack.push_back(Item::Literal(val.to_string()));
-                        i += value + 2;
-                    } else {
-                        panic!("WTF");
-                    }
-                }
-                "@" => {
-                    let match_len = s.next_word_length_underscore(i+1).expect("Wtf");
+            } else if s.at(i).is_ascii_alphabetic() {
+                if let Some(match_len) = s[i + 1..].find(|c: char| !c.is_ascii_alphabetic()) {
                     let value = &s[i..i + match_len + 1];
                     stack.push_back(Item::Token(value.to_string()));
                     i += match_len + 1;
+                } else {
+                    panic!("WTF");
                 }
-                " " | "," => {
-                    i += 1;
+            } else if s.at(i).is_ascii_digit() {
+                if let Some(match_len) = s[i + 1..].find(|c: char| !c.is_ascii_digit()) {
+                    let value = &s[i..i + match_len + 1];
+                    stack.push_back(Item::Literal(value.to_string()));
+                    i += match_len + 1;
+                } else {
+                    panic!("WTF");
                 }
-                op if ['+', '*', '-', '/'].contains(&op.chars().next().unwrap()) => {
-                    stack.push_back(Item::Operator(op.chars().next().unwrap()));
-                    i += 1;
+            } else if ['(' , '<'].contains(&s.at(i)) {
+                let c = &s[i..=i].chars().next().unwrap();
+                stack.push_back(Item::ZoneStart(*c));
+                i += 1;
+            } else if [')',  '>'].contains(&s.at(i)) {
+                let c = &s[i..=i].chars().next().unwrap();
+                stack.push_back(Item::ZoneEnd(*c));
+                i += 1;
+                self.revaluate_from_end_zone(&mut stack);
+            } else if s.at(i) == '\"' {
+                if let Some(value) = s[i + 1..].find('\"') {
+                    let val = &s[i..i + value + 2];
+                    stack.push_back(Item::Literal(val.to_string()));
+                    i += value + 2;
+                } else {
+                    panic!("WTF");
                 }
-                _ => panic!("Unknown symbol {} at position {}", &s[i..i + 1], i),
+            } else if s.at(i) == '@' {
+                let match_len = s.next_word_length_underscore(i + 1).expect("Wtf");
+                let value = &s[i..i + match_len + 1];
+                stack.push_back(Item::Token(value.to_string()));
+                i += match_len + 1;
+            } else if [' ', ','].contains(&s.at(i)) {
+                i += 1;
+            } else if ['+', '*', '-', '/'].contains(&s.at(i)) {
+                stack.push_back(Item::Operator(s.at(i)));
+                i += 1;
+            } else {
+               panic!("Unknown symbol {} at position {}", &s[i..i + 1], i);
             }
         }
         assert_eq!(stack.len(), 1, "Unknown structure");
@@ -270,39 +258,32 @@ impl LogicExecutor for TableData {
             self.execute_str(s.as_str().remove_first_symbol(), index, name)
         } else {
             s
-        }
+        };
     }
 
     fn fill_data(&mut self) {
-        for i in 0..self.columns.len() {
-            let mut new_keys: Vec<u32> = self.columns[i]
-                .values
-                .keys()
-                .map(|x| x.clone())
-                .collect::<Vec<u32>>();
-            new_keys.sort();
-
-            let mut prev_val: String = "".to_string();
-            for key in new_keys {
-                let cell: &String = self.columns[i].values.get(&key).unwrap();
-
+        for column_index in 0..self.columns.len() {
+            let row_keys: Vec<u32> = self.columns[column_index].get_sorted_keys();
+            let mut prev_val: String = String::from("");
+            for row_number in row_keys {
+                let cell: &String = self.columns[column_index].values.get(&row_number).unwrap();
                 if cell == "=^^" {
                     let replaced_prev_values_str =
-                        TableData::increase_column_digits(prev_val.clone(), key - 1);
+                        TableData::increase_column_digits(prev_val.clone(), row_number - 1);
                     let calculated_data = self.parse_string(
                         replaced_prev_values_str,
-                        key,
-                        String::from(&self.columns[i].name),
+                        row_number,
+                        String::from(&self.columns[column_index].name),
                     );
-                    self.columns[i].values.insert(12, calculated_data);
+                    self.columns[column_index].values.insert(row_number, calculated_data);
                 } else {
                     prev_val = String::from(cell);
                     let calculated_data = self.parse_string(
                         String::from(cell),
-                        key,
-                        String::from(&self.columns[i].name),
+                        row_number,
+                        String::from(&self.columns[column_index].name),
                     );
-                    self.columns[i].values.insert(12, calculated_data);
+                    self.columns[column_index].values.insert(row_number, calculated_data);
                 }
             }
         }
