@@ -3,6 +3,9 @@ use std::collections::VecDeque;
 use crate::table::*;
 // use regex::Regex;
 
+use crate::regex_helpers::*;
+use crate::io_utils::*;
+use regex::Regex;
 use substring::Substring;
 
 fn remove_first_symbol<'a>(s: &'a str) -> &'a str {
@@ -25,14 +28,13 @@ enum Item {
     ZoneEnd(char),
 }
 
-
 pub trait LogicExecutor {
     fn parse_string(&self, s: String, index: u32, name: String) -> String;
     fn get_command(s: &str) -> Command;
     fn execute_str(&self, s: &str, index: u32, name: String) -> String;
     fn fill_data(&mut self);
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>);
-    fn calc_function(&self, name: &str, args: &[String]) -> String; 
+    fn calc_function(&self, name: &str, args: &[String]) -> String;
 }
 
 struct Command {
@@ -82,7 +84,8 @@ impl LogicExecutor for TableData {
                                     match name_2_item {
                                         Item::Literal(val) => {
                                             operands.push(val);
-                                            let res = self.calc_function(&op.to_string(), &operands);
+                                            let res =
+                                                self.calc_function(&op.to_string(), &operands);
                                             stack.push_back(Item::Literal(res));
                                             operands.clear();
                                         }
@@ -123,27 +126,19 @@ impl LogicExecutor for TableData {
 
         while i < s.len() {
             match &s[i..=i] {
-                c if c.chars().all(|c| c.is_ascii_uppercase()) => {
-                    if let Some(match_len) = s[i + 1..].find(|c:char| !c.is_ascii_alphabetic()) {
-                        let value = &s[i..i + match_len + 1];
-                        if value.chars().all(|c| c.is_ascii_digit()) {
-                            stack.push_back(Item::Literal(value.to_string()));
-                            i += match_len + 1;
-                        } else if value == "^v" {
-                            stack.push_back(Item::Literal(value.to_string()));
-                            i += 3;
-                        } else if value == "^" {
+                c if c.at(0).is_uppercase() && !s.at(i+1).is_alphabetic() => {
+                        if s.at(i+1).is_ascii_digit() {
+                            stack.push_back(Item::Literal(String::from("asd")));
                             i += 2;
-                            stack.push_back(Item::Literal(
-                                "copies the evaluated result of the cell above in the same column"
-                                    .to_string(),
-                            ));
+                        } else if &s[i+1..=i+2] == "^v" {
+                            stack.push_back(Item::Literal(String::from("asd")));
+                            i += 3;
+                        } else if &s[i+1..=i+1] == "^" {
+                            i += 2;
+                            stack.push_back(Item::Literal(String::from("asd")));
                         } else {
-                            panic!("Unsupported structure");
+                            panic!("Unsupported structure for value {}", &s[i+1..=i+1]);
                         }
-                    } else {
-                        panic!("WTF");
-                    }
                 }
                 c if c.chars().all(|c| c.is_ascii_alphabetic()) => {
                     if let Some(match_len) = s[i + 1..].find(|c: char| !c.is_ascii_alphabetic()) {
@@ -185,13 +180,13 @@ impl LogicExecutor for TableData {
                 }
                 "@" => {
                     if let Some(match_len) =
-                        s[i + 1..].find(|c:char| c == '_' || c.is_ascii_alphabetic())
+                        s[i + 1..].find(|c: char| c == '_' || c.is_ascii_alphabetic())
                     {
                         let value = &s[i..i + match_len + 2];
                         stack.push_back(Item::Token(value.to_string()));
                         i += match_len + 2;
                     } else {
-                        panic!("WTF");
+                        panic!("WTF {i}");
                     }
                 }
                 " " | "," => {
@@ -201,14 +196,20 @@ impl LogicExecutor for TableData {
                     stack.push_back(Item::Operator(op.chars().next().unwrap()));
                     i += 1;
                 }
-                _ => panic!("WTF"),
+                _ => panic!("Unkown symbol {} at position {}", &s[i..i + 1], i),
             }
         }
 
         if stack.len() > 1 {
             panic!("Lacking end statement");
         }
-        String::from("sadf")
+
+        match stack.pop_back().unwrap() {
+            Item::Literal(val) => {
+                return val;
+            }
+            _ => panic!("WTF"),
+        }
     }
 
     fn parse_string(&self, s: String, index: u32, name: String) -> String {
@@ -230,11 +231,27 @@ impl LogicExecutor for TableData {
                 .collect::<Vec<u32>>();
             newKeys.sort();
 
+            let mut prev_val: String = "".to_string();
             for key in newKeys {
                 let cell: &String = self.columns[i].values.get(&key).unwrap();
-                let calculated_data: String =
-                    self.parse_string(String::from(cell), key, String::from(&self.columns[i].name));
-                self.columns[i].values.insert(12, calculated_data);
+
+                if cell == "=^^" {
+                    let replaced_prev_values_str = increase_column_digits(prev_val.clone(), key - 1);
+                    let calculated_data = self.parse_string(
+                        replaced_prev_values_str,
+                        key,
+                        String::from(&self.columns[i].name)
+                    );
+                    self.columns[i].values.insert(12, calculated_data);
+                } else {
+                    prev_val = String::from(cell);
+                    let calculated_data = self.parse_string(
+                        String::from(cell),
+                        key,
+                        String::from(&self.columns[i].name)
+                    );
+                    self.columns[i].values.insert(12, calculated_data);
+                }
             }
         }
     }

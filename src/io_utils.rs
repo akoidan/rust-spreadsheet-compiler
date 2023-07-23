@@ -18,3 +18,13 @@ pub fn substr(string: String, start: u32, end: u32) -> String {
 pub fn remove_first_symbol<'a>(s: &'a str) -> &'a str {
     return &s[1..s.len()];
 }
+
+pub trait StrUtils {
+    fn at(self, index: usize) -> char;
+}
+
+impl StrUtils for &str {
+    fn at(self, index: usize) -> char {
+        return self.chars().nth(index).unwrap();
+    }
+}
