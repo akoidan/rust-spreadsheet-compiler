@@ -170,7 +170,20 @@ impl LogicExecutor for TableData {
     }
 
     fn evaluate_arithmetic(&self, operator: char, args: &[String]) -> String {
-        format!("[{}({})]", operator, args.join(","))
+        assert_eq!(args.len(), 2, "Cannot operate with complex arguments");
+        let a = args[0].parse::<f32>().expect(&format!("Cannot cast {} to int", args[0]));
+        let b = args[1].parse::<f32>().expect(&format!("Cannot cast {} to int", args[1]));
+        let mut c: f32 = 0.0;
+        if operator == '+' {
+            c = a+b;
+        } else if operator == '-' {
+            c = a-b;
+        } else if operator == '*' {
+            c = a*b;
+        } else if operator == '/' {
+            c = a/b;
+        }
+        return c.to_string();
     }
 
     fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (String, usize) {
@@ -179,7 +192,8 @@ impl LogicExecutor for TableData {
             let value = self.get_by_coordinate(s.at(i), index);
             return (value, 2);
         } else if &s[i + 1..=i + 2] == "^v" {
-            return (String::from("asd"), 3);
+            let res = self.get_last_value_of_the_column(s.at(i));
+            return (String::from(res), 3);
         } else if &s[i + 1..=i + 1] == "^" {
             let value = self.get_by_coordinate(s.at(i), &(current_row_number - 1));
             return (value, 2);
