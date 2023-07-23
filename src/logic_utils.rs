@@ -1,16 +1,10 @@
 use std::collections::VecDeque;
-use std::fmt::Pointer;
 
 use crate::str_utils::{StrUtils};
 use crate::table::{TableDataGetter, TableData, ColumnGetter};
-use regex::{Captures, Regex};
+use regex::{Regex};
 
-struct Command {
-    operands: Vec<String>,
-    operator: String,
-}
-
-enum Item {
+pub enum Item {
     Literal(String),
     Token(String),
     Operator(char),
@@ -54,7 +48,7 @@ impl Item {
 
 pub trait LogicExecutor {
     fn parse_string(&self, s: String, index: u32, name: String) -> String;
-    fn get_command(s: &str) -> Command;
+    // fn get_command(s: &str) -> Command;
     fn execute_str(&self, s: &str, index: u32, name: String) -> String;
     fn fill_data(&mut self);
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>);
@@ -67,14 +61,14 @@ pub trait LogicExecutor {
 }
 
 impl LogicExecutor for TableData {
-    fn get_command(s: &str) -> Command {
-        let operands = vec![];
-        let c = Command {
-            operands,
-            operator: String::from("asd"),
-        };
-        return c;
-    }
+    // fn get_command(s: &str) -> Command {
+    //     let operands = vec![];
+    //     let c = Command {
+    //         operands,
+    //         operator: String::from("asd"),
+    //     };
+    //     return c;
+    // }
 
     fn increase_column_digits(text: String, prev_num: u32) -> String {
         return Regex::new(format!("[A-Z]{prev_num}+").as_str())
@@ -118,10 +112,10 @@ impl LogicExecutor for TableData {
 
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>) {
         let item = stack.pop_back().unwrap();
-        let mut operands = Vec::new();
+        let mut operands: Vec<String> = Vec::new();
         match item {
             Item::Literal(val) => {
-                println!("WTF");
+                operands.push(val);
             }
             Item::ZoneEnd(val) if val == '>' => {
                 let column_res = self.evaluate_column_reference(stack);
@@ -262,6 +256,7 @@ impl LogicExecutor for TableData {
 
     fn parse_string(&self, s: String, index: u32, name: String) -> String {
         return if &s.as_str()[0..=0] == "=" {
+            // this formula should be evaluated
             self.execute_str(s.as_str().remove_first_symbol(), index, name)
         } else {
             s
@@ -274,11 +269,13 @@ impl LogicExecutor for TableData {
             let mut prev_val: String = String::from("");
             for row_number in row_keys {
                 let cell: &String = self.columns[column_index].values.get(&row_number).unwrap();
+                // this formula should be resolved before the main loop, since it allows only 1 expression
                 if cell == "=^^" {
-                    let replaced_prev_values_str =
-                        TableData::increase_column_digits(prev_val.clone(), row_number - 1);
+                    // replace occurrences in the current row
+                    // sum(spread(split(D2, ","))) -> sum(spread(split(D3, ",")))
+                    let s = TableData::increase_column_digits(prev_val.clone(), row_number - 1);
                     let calculated_data = self.parse_string(
-                        replaced_prev_values_str,
+                        s,
                         row_number,
                         String::from(&self.columns[column_index].name),
                     );

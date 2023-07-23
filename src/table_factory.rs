@@ -1,7 +1,5 @@
 use crate::str_utils::StrUtils;
-use crate::table::{Column, TableData, TableDataGetter};
-
-use std::collections::HashMap;
+use crate::table::{TableData, TableDataGetter};
 
 fn is_head(col: &str) -> bool {
     return col.starts_with("!");

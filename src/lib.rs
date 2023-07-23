@@ -17,13 +17,13 @@ mod tests {
     }
     #[test]
     fn parses_single_forumla() {
-        let mut a = construct_table();
+        let a = construct_table();
         a.parse_string(String::from("=text(bte(@adjusted_cost<1>, @cost_threshold<1>)"), 16, String::from("cost_too_high"));
     }
 
     #[test]
     fn parses_single_forumla_2() {
-        let mut a = construct_table();
+        let a = construct_table();
         a.parse_string(String::from("=concat(\"t_\", text(incFrom(1)))"), 2, String::from("transaction_id"));
     }
 
