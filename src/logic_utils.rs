@@ -70,7 +70,7 @@ pub trait LogicExecutor {
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>);
     fn calc_function(&self, name: &str, args: &[String]) -> String;
     fn evaluate_arithmetic(&self, operator: char, args: &[String]) -> String;
-    fn resolve_literal_at(&self, s: &str, i: usize) -> (String, usize);
+    fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (String, usize);
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
     fn increase_column_digits(text: String, prev_num: u32) -> String;
     fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>);
@@ -173,7 +173,7 @@ impl LogicExecutor for TableData {
         format!("[{}({})]", operator, args.join(","))
     }
 
-    fn resolve_literal_at(&self, s: &str, i: usize) -> (String, usize) {
+    fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (String, usize) {
         if s.at(i + 1).is_ascii_digit() { // cell reference
             let index = &s.at(i + 1).to_string().parse::<u32>().expect("Expected literal number");
             let value = self.get_by_coordinate(s.at(i), index);
@@ -181,7 +181,8 @@ impl LogicExecutor for TableData {
         } else if &s[i + 1..=i + 2] == "^v" {
             return (String::from("asd"), 3);
         } else if &s[i + 1..=i + 1] == "^" {
-            return (String::from("asd"), 2);
+            let value = self.get_by_coordinate(s.at(i), &(current_row_number - 1));
+            return (value, 2);
         } else {
             panic!("Unsupported structure for value {}", &s[i + 1..=i + 1]);
         }
@@ -193,7 +194,7 @@ impl LogicExecutor for TableData {
         while i < s.len() {
             // if resolved to literal
             if s.at(i).is_uppercase() && !s.at(i + 1).is_alphabetic() {
-                let (literal, literal_length) = self.resolve_literal_at(s, i);
+                let (literal, literal_length) = self.resolve_literal_at(s, i, index);
                 i += literal_length;
                 stack.push_back(Item::Literal(literal))
                 // if token

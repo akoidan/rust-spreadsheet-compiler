@@ -16,4 +16,5 @@ fn main() {
         .expect("Cannot open file");
     let mut table = lines_to_table(&data);
     table.fill_data();
+    println!("Finally");
 }

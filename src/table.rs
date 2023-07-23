@@ -13,6 +13,7 @@ pub struct TableData {
 pub trait ColumnGetter {
     fn get_sorted_keys(&self) -> Vec<u32>;
     fn get_cell_by_index(&self, index: usize) -> String;
+    fn get_last_cell_index(&self) -> u32;
 }
 
 impl ColumnGetter for Column {
@@ -23,6 +24,10 @@ impl ColumnGetter for Column {
             .collect::<Vec<u32>>();
         new_keys.sort();
         return new_keys;
+    }
+
+    fn get_last_cell_index(&self) -> u32 {
+        return *self.values.keys().max().unwrap()
     }
 
     fn get_cell_by_index(&self, index: usize) -> String {
@@ -38,6 +43,7 @@ pub trait TableDataGetter {
     fn get_by_name<'a>(&'a mut self, name: &str) -> &'a mut Column;
     fn get_by_name_unmut<'a>(&'a self, name: &str) -> &'a Column;
     fn get_by_coordinate(&self, letter: char, row_number: &u32) -> String;
+    fn get_last_value_of_the_column(&self, letter: char) -> String;
 }
 
 impl TableDataGetter for TableData {
@@ -59,6 +65,26 @@ impl TableDataGetter for TableData {
     fn get_by_name_unmut<'a>(&'a self, name: &str) -> &'a Column {
         let index = self.columns.iter().position(|x| x.name == name);
         return &self.columns[index.expect(&format!("column {name} doesnt exist"))];
+    }
+
+    /*
+        Returns the last (closer to bottom) cell by specified letter
+        e.g. if 2 named columns present on letter A, then it would return the lower one
+     */
+    fn get_last_value_of_the_column(&self, letter: char) -> String {
+        let mut colum_index: u32 = 0;
+        let mut res: Option<&String> = None;
+        for column in &self.columns {
+            if column.letter != letter {
+                continue
+            }
+            let new_index =  column.get_last_cell_index();
+            if new_index > colum_index {
+                colum_index = new_index;
+                res = column.values.get(&new_index);
+            }
+        }
+        return String::from(res.expect("No such letter"));
     }
 
     fn get_by_coordinate(&self, letter: char, row_number: &u32) -> String {
