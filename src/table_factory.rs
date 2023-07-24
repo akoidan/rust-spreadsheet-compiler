@@ -31,7 +31,7 @@ pub fn lines_to_table(csv_str: &str) -> TableData {
                     continue;
                 }
                 let x = table.get_by_name(&current_head[column_index]);
-                x.values.insert(row_index as u32 +1, String::from(column));
+                x.string_values.insert(row_index as u32 +1, String::from(column));
             }
         }
     }

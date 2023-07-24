@@ -1,135 +1,20 @@
 use std::collections::VecDeque;
 
 use crate::str_utils::{StrUtils};
-use crate::table::{TableDataGetter, TableData, ColumnGetter};
+use crate::table::{TableDataGetter, TableData, ColumnGetter, Column, Item, LiteralValue};
 use regex::{Regex};
 
-#[derive(Clone)]
-pub struct LiteralValue {
-    value_as_string: Option<String>,
-    value_as_float: Option<f32>,
-    value_as_int: Option<usize>,
-    value_as_str_array: Option<Vec<String>>,
-    value_as_float_array: Option<Vec<f32>>,
-}
 
-pub enum Item {
-    Literal(LiteralValue),
-    Token(String),
-    Operator(char),
-    ZoneStart(char),
-    ZoneEnd(char),
-}
-
-impl Item {
-    fn get_literal_as_number(&self) -> usize {
-        if let Item::Literal(value)= self {
-            return value.value_as_int.expect("Expected literal number")
-        } else {
-            panic!("Current item should be a literal");
-        }
-    }
-
-    pub fn conduct_string_literal(val: String) -> Item {
-        return Item::Literal(Item::conduct_str_literal_value(val));
-    }
-
-    pub fn conduct_float_literal(val: f32) -> Item {
-        return Item::Literal(Item::conduct_float_literal_value(val));
-    }
-
-    pub fn conduct_int_literal_value(val: usize) -> LiteralValue {
-        return LiteralValue {
-            value_as_string: None,
-            value_as_str_array: None,
-            value_as_float: None,
-            value_as_int: Some(val),
-            value_as_float_array: None,
-        }
-    }
-
-    pub fn conduct_float_literal_value(val: f32) -> LiteralValue {
-        return LiteralValue {
-            value_as_string: None,
-            value_as_str_array: None,
-            value_as_float: Some(val),
-            value_as_int: None,
-            value_as_float_array: None,
-        }
-    }
-
-    pub fn conduct_str_literal_value(val: String) -> LiteralValue {
-        return LiteralValue {
-            value_as_string: Some(val.to_string()),
-            value_as_str_array: None,
-            value_as_float: None,
-            value_as_int: None,
-            value_as_float_array: None,
-        }
-    }
-
-    pub fn conduct_int_literal(val: usize) -> Item {
-        return Item::Literal(Item::conduct_int_literal_value(val));
-    }
-
-    fn get_end_zone_character(&self) -> char {
-        if let Item::ZoneEnd(s) = self {
-            *s
-        } else {
-            panic!("Current item should be a literal");
-        }
-    }
-
-    fn get_as_operator(&self) -> char {
-        if let Item::Operator(s) = self {
-            *s
-        } else {
-            panic!("Current item should be a literal");
-        }
-    }
-
-    fn get_literal_as_text(&self) -> String {
-        if let Item::Literal(value) = self {
-            return value.value_as_string.clone().unwrap();
-        } else {
-            panic!("Current item should be a literal");
-        }
-    }
-
-    fn get_literal(&self) -> &LiteralValue {
-        if let Item::Literal(value) = self {
-            return value;
-        } else {
-            panic!("Current item should be a literal");
-        }
-    }
-
-    fn get_token(&self) -> String {
-        if let Item::Token(s) = self {
-            return String::from(s);
-        } else {
-            panic!("Current item should be a token");
-        }
-    }
-
-    fn expect_start_of(&self, char_value: char) {
-        if let Item::ZoneStart(s) = self {
-            assert_eq!(s, &char_value, "Column reference should preceed <");
-        } else {
-            panic!("Current item should be literal");
-        }
-    }
-}
 
 pub trait LogicExecutor {
-    fn parse_string(&self, s: String, index: u32, name: String) -> String;
+    fn parse_string(&self, s: String, index: u32, name: String) -> LiteralValue;
     // fn get_command(s: &str) -> Command;
-    fn execute_str(&self, s: &str, index: u32, name: String) -> String;
+    fn execute_str(&self, s: &str, index: u32, name: String) -> LiteralValue;
     fn fill_data(&mut self);
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize);
     fn call_function(&self, name: &str, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue;
     fn evaluate_arithmetic(&self, operator: char, args: &Vec<LiteralValue>) -> LiteralValue;
-    fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (String, usize);
+    fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (LiteralValue, usize);
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
     fn increase_column_digits(text: String, prev_num: u32) -> String;
     fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>);
@@ -162,11 +47,10 @@ impl LogicExecutor for TableData {
             .pop_back()
             .expect("Column ref should precede name")
             .get_token();
-        let res = String::from(
-            self
+        let literal = self
                 .get_by_name_unmut(column_name.as_str().remove_first_symbol()) // drop @
-                .get_cell_by_index(column_index));
-        stack.push_back(Item::conduct_string_literal(res));
+                .get_cell_by_index(column_index);
+        stack.push_back(Item::Literal(literal));
     }
 
     fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize) {
@@ -306,14 +190,14 @@ impl LogicExecutor for TableData {
         return Item::conduct_float_literal_value(c);
     }
 
-    fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (String, usize) {
+    fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (LiteralValue, usize) {
         if s.at(i + 1).is_ascii_digit() { // cell reference
             let index = &s.at(i + 1).to_string().parse::<u32>().expect("Expected literal number");
             let value = self.get_by_coordinate(s.at(i), index);
             return (value, 2);
         } else if &s[i + 1..=i + 2] == "^v" {
             let res = self.get_last_value_of_the_column(s.at(i));
-            return (String::from(res), 3);
+            return (res, 3);
         } else if &s[i + 1..=i + 1] == "^" {
             let value = self.get_by_coordinate(s.at(i), &(current_row_number - 1));
             return (value, 2);
@@ -322,7 +206,7 @@ impl LogicExecutor for TableData {
         }
     }
 
-    fn execute_str(&self, s: &str, index: u32, name: String) -> String {
+    fn execute_str(&self, s: &str, index: u32, name: String) -> LiteralValue {
         let mut stack: VecDeque<Item> = VecDeque::new();
         let mut inc_from: usize = 0; // for incFrom(
         let mut i = 0;
@@ -331,7 +215,7 @@ impl LogicExecutor for TableData {
             if s.at(i).is_uppercase() && !s.at(i + 1).is_alphabetic() {
                 let (literal, literal_length) = self.resolve_literal_at(s, i, index);
                 i += literal_length;
-                stack.push_back(Item::conduct_string_literal(literal))
+                stack.push_back(Item::Literal(literal))
                 // if token
             } else if s.at(i).is_ascii_alphabetic() {
                 let token_length = s.next_word_length(i + 1);
@@ -378,10 +262,12 @@ impl LogicExecutor for TableData {
         }
         while !stack.is_empty() {
             if stack.len() == 1 {
-                return stack
-                    .pop_back()
-                    .expect("Stack evaluated to 0")
-                    .get_literal_as_text();
+                if let Item::Literal(value) = stack.pop_back().expect("Stack evaluated to 0") {
+                    return value;
+                } else {
+                    panic!("qt");
+                }
+
             }
             stack.push_front(Item::ZoneStart('('));
             self.evaluate_curly_zone(&mut stack, &mut inc_from);
@@ -389,13 +275,17 @@ impl LogicExecutor for TableData {
         panic!("Invalid expression");
     }
 
-    fn parse_string(&self, s: String, index: u32, name: String) -> String {
+    fn parse_string(&self, s: String, index: u32, name: String) -> LiteralValue {
         return if &s.as_str()[0..=0] == "=" {
             // this formula should be evaluated
             self.execute_str(s.as_str().remove_first_symbol(), index, name)
-
         } else {
-            s
+            let a = s.parse::<f32>();
+            if a.is_err() {
+                return Item::conduct_str_literal_value(s);
+            } else {
+                return Item::conduct_float_literal_value(a.unwrap());
+            }
         };
     }
 
@@ -404,7 +294,7 @@ impl LogicExecutor for TableData {
             let row_keys: Vec<u32> = self.columns[column_index].get_sorted_keys();
             let mut prev_val: String = String::from("");
             for row_number in row_keys {
-                let cell: &String = self.columns[column_index].values.get(&row_number).unwrap();
+                let cell: &String = self.columns[column_index].string_values.get(&row_number).unwrap();
                 // this formula should be resolved before the main loop, since it allows only 1 expression
                 if cell == "=^^" {
                     // replace occurrences in the current row
@@ -415,7 +305,7 @@ impl LogicExecutor for TableData {
                         row_number,
                         String::from(&self.columns[column_index].name),
                     );
-                    self.columns[column_index].values.insert(row_number, calculated_data);
+                    self.columns[column_index].resolved_value.insert(row_number, calculated_data);
                 } else {
                     prev_val = String::from(cell);
                     let calculated_data = self.parse_string(
@@ -423,7 +313,7 @@ impl LogicExecutor for TableData {
                         row_number,
                         String::from(&self.columns[column_index].name),
                     );
-                    self.columns[column_index].values.insert(row_number, calculated_data);
+                    self.columns[column_index].resolved_value.insert(row_number, calculated_data);
                 }
             }
         }
