@@ -10,6 +10,8 @@ mod tests {
     use std::fs::read_to_string;
     use std::path::Path;
 
+    use fluent_asserter::prelude::*;
+
     use crate::logic_utils::LogicExecutor;
     use crate::table::TableDataGetter;
     use crate::table_factory::lines_to_table;
@@ -33,6 +35,18 @@ mod tests {
     #[test]
     fn test_wqith_simple_evaluation() {
         fill_table_and_compare_to("./assets/transactions_simple.csv", "./assets/transactions_simple.res.csv");
+    }
+
+    #[test]
+    fn test_minified() {
+        fill_table_and_compare_to("./assets/minified.csv", "./assets/minified.res.csv");
+    }
+
+    #[test]
+    fn test_minified_invalid() {
+        assert_that_code!( || fill_table_and_compare_to("./assets/minified.invalid.csv", "./assets/minified.res.csv"))
+            .panics()
+            .with_message("Mismatch curly braces");
     }
 
     #[test]

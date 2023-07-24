@@ -309,6 +309,7 @@ impl LogicExecutor for TableData {
                 panic!("Unknown symbol {} at position {}", &s[i..i + 1], i);
             }
         }
+
         while !stack.is_empty() {
             if stack.len() == 1 {
                 if let Item::Literal(value) = stack.pop_back().expect("Stack evaluated to 0") {
@@ -317,8 +318,12 @@ impl LogicExecutor for TableData {
                     panic!("qt");
                 }
             }
+            let prev_stack_length = stack.len();
             stack.push_front(Item::ZoneStart('('));
             self.evaluate_curly_zone(&mut stack, inc_from);
+            if prev_stack_length == stack.len() {
+                panic!("Mismatch curly braces");
+            }
         }
         panic!("Invalid expression");
     }
