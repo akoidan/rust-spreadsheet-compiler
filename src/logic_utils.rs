@@ -23,6 +23,7 @@ pub trait LogicExecutor {
     fn split(&self, args: Vec<LiteralValue>) -> LiteralValue;
     fn spread(&self, args: Vec<LiteralValue>) -> LiteralValue;
     fn sum(&self, args: Vec<LiteralValue>)  -> LiteralValue;
+    fn text(&self, args: Vec<LiteralValue>)  -> LiteralValue;
 }
 
 impl LogicExecutor for TableData {
@@ -118,6 +119,7 @@ impl LogicExecutor for TableData {
             "split" => self.split(args),
             "spread" => self.spread(args),
             "sum" => self.sum(args),
+            "text" => self.sum(args),
             _ => Item::conduct_str_literal_value(format!("[{}({})]", name, "wtf")),
         }
     }
@@ -133,6 +135,12 @@ impl LogicExecutor for TableData {
         assert_eq!(args.len(), 1, "summ accepts 1 element");
         let sum: f32 = args[0].value_as_float_array.clone().unwrap().iter().sum();
         return Item::conduct_float_literal_value(sum);
+    }
+
+    fn text(&self, args: Vec<LiteralValue>)  -> LiteralValue {
+        assert_eq!(args.len(), 1, "summ accepts 1 element");
+        let text: String = args[0].value_as_int.unwrap().clone().to_string();
+        return Item::conduct_str_literal_value(text);
     }
 
     fn spread(&self, args: Vec<LiteralValue>) -> LiteralValue {
