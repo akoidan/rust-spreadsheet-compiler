@@ -8,7 +8,6 @@ use std::fs::read_to_string;
 use table_factory::lines_to_table;
 
 extern crate regex;
-extern crate substring;
 
 fn main() {
     let data = read_to_string("/home/andrew/it/my-projects/rust/assets/transactions.csv")

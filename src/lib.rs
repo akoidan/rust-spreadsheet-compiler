@@ -3,7 +3,6 @@ mod logic_utils;
 mod table_factory;
 mod str_utils;
 extern crate regex;
-extern crate substring;
 
 #[cfg(test)]
 mod tests {

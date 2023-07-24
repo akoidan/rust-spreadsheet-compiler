@@ -1,0 +1,7 @@
+**
+!/src
+!/src/*
+!/assets
+!/assets/*
+!/Cargo.lock
+!/Cargo.toml
