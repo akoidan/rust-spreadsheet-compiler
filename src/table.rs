@@ -56,10 +56,6 @@ impl Item {
         return Item::Literal(Item::conduct_str_literal_value(val));
     }
 
-    pub fn conduct_float_literal(val: f32) -> Item {
-        return Item::Literal(Item::conduct_float_literal_value(val));
-    }
-
     pub fn conduct_int_literal_value(val: usize) -> LiteralValue {
         return LiteralValue {
             value_as_string: None,
@@ -96,14 +92,6 @@ impl Item {
 
     pub fn get_end_zone_character(&self) -> char {
         if let Item::ZoneEnd(s) = self {
-            *s
-        } else {
-            panic!("Current item should be a literal");
-        }
-    }
-
-    pub fn get_as_operator(&self) -> char {
-        if let Item::Operator(s) = self {
             *s
         } else {
             panic!("Current item should be a literal");

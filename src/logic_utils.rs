@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::str_utils::{StrUtils};
-use crate::table::{TableDataGetter, TableData, ColumnGetter, Column, Item, LiteralValue};
+use crate::table::{TableDataGetter, TableData, ColumnGetter, Item, LiteralValue};
 use regex::{Regex};
 
 

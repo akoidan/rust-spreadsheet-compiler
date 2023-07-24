@@ -5,7 +5,6 @@ mod table_factory;
 
 use logic_utils::LogicExecutor;
 use std::fs::read_to_string;
-use str_utils::StrUtils;
 use table_factory::lines_to_table;
 
 extern crate regex;
