@@ -9,6 +9,7 @@ extern crate regex;
 mod tests {
     use crate::logic_utils::LogicExecutor;
     use crate::table_factory::lines_to_table;
+    use crate::table::TableDataGetter;
 
 
     use std::fs::read_to_string;
@@ -22,7 +23,7 @@ mod tests {
         let mut table = lines_to_table(&data);
         table.fill_data();
         let rendered = table.as_string();
-        assert_eq!(data_res, rendered);
+        assert_eq!(rendered, data_res);
     }
 
     #[test]

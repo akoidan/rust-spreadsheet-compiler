@@ -6,6 +6,7 @@ mod table_factory;
 use logic_utils::LogicExecutor;
 use std::fs::read_to_string;
 use table_factory::lines_to_table;
+use table::TableDataGetter;
 
 use std::env;
 

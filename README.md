@@ -8,8 +8,6 @@ Please take a look at the [task](https://github.com/stakingrewards/engineering-c
 
 #### With Docker
 
-Please use wide terminal with at least 200 symbols width
-
 ```bash
 docker build . -t spreadsheet
 docker run -t spreadsheet

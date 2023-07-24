@@ -35,12 +35,17 @@ pub trait TableDataGetter {
     fn get_by_name_unmut<'a>(&'a self, name: &str) -> &'a Column;
     fn get_last_value_of_the_column(&self, letter: char) -> LiteralValue;
     fn get_by_coordinate(&self, letter: char, row_number: &u32) -> LiteralValue;
+    fn get_row_count(&self) -> usize;
+    fn get_col_count(&self) -> usize;
+    fn as_string(&self) -> String;
+    fn get_data_as_str(&self, row_index: &u32, col_index: u8) -> Option<String>;
 }
 
 pub trait ColumnGetter {
     fn get_sorted_keys(&self) -> Vec<u32>;
     fn get_cell_by_index(&self, index: usize) -> LiteralValue;
     fn get_last_cell_index(&self) -> u32;
+    fn get_first_cell_index(&self) -> u32;
 }
 
 impl Item {
@@ -138,6 +143,10 @@ impl ColumnGetter for Column {
         return *self.string_values.keys().max().unwrap()
     }
 
+    fn get_first_cell_index(&self) -> u32 {
+        return *self.string_values.keys().min().unwrap()
+    }
+
     fn get_cell_by_index(&self, index: usize) -> LiteralValue {
         // @adjusted_cost<1> this references to first element which indexing start at 0,
         // this is why -1
@@ -209,5 +218,74 @@ impl TableDataGetter for TableData {
             }
         }
         panic!("Referenced to non-existed column {}{}", letter, row_number);
+    }
+
+    /// Gets string data from original file by coordinates
+    /// Columns have non-original structure, making table have more column that original file,
+    /// since some name duplicate
+    fn get_data_as_str(&self, row_index: &u32, col_index: u8) -> Option<String> {
+        for col in &self.columns {
+            if col.letter as u8 - 'A' as u8  == col_index {
+                let value = col.resolved_value.get(&row_index);
+                if let Some(value) = value {
+                    if let Some(value_str) = value.value_as_string.as_ref() {
+                        return Some(format!("{:<23}", value_str));
+                    } else  if let Some(value_str) = value.value_as_float.as_ref() {
+                        return  Some(format!("{:<23}", value_str));
+                    } else {
+                        return Some(format!("{:<23}", "????"));
+                    }
+                } else if col.get_first_cell_index() == (row_index + 1) {
+                    return Some(format!("!{:<22}", col.name));
+                }
+            }
+        }
+        return None
+    }
+
+    /// Get original file amount of rows
+    fn get_row_count(&self) -> usize {
+        let mut current_biggest_index = 0;
+        for col in &self.columns {
+            let cur_index =  col.get_last_cell_index();
+            if cur_index > current_biggest_index {
+                current_biggest_index = cur_index;
+            }
+        }
+        return current_biggest_index as usize;
+    }
+
+    /// Get original file amount of columns
+    fn get_col_count(&self) -> usize {
+        let mut found_first_a = false;
+        let mut col_count = 0;
+        for col in &self.columns {
+            col_count += 1;
+            if col.letter == 'A' && !found_first_a {
+                found_first_a = true
+            } else if col.letter == 'A' && found_first_a {
+                break
+            }
+        }
+        return col_count;
+    }
+
+    /// Prints resolved table in original format
+    fn as_string(&self) -> String {
+        let mut s: String = String::from("");
+        let row_count = self.get_row_count();
+        let col_count = self.get_col_count();
+
+        for row_index in 1..=row_count { ;
+            for col_index in 0..col_count {
+                let res = self.get_data_as_str(&(row_index as u32), col_index as u8);
+                if res.is_some() {
+                    s.push_str(res.unwrap().as_str());
+                    s.push_str("|")
+                }
+            }
+            s.push_str("\n")
+        }
+        return s;
     }
 }

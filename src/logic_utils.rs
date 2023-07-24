@@ -9,7 +9,6 @@ pub trait LogicExecutor {
     fn parse_string(&self, s: String, index: u32, inc_from: &mut usize) -> LiteralValue;
     fn execute_str(&self, s: &str, index: u32, inc_from: &mut usize) -> LiteralValue;
     fn fill_data(&mut self);
-    fn as_string(&self) -> String;
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize);
     fn call_function(&self, name: &str, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue;
     fn evaluate_arithmetic(&self, operator: char, args: &Vec<LiteralValue>) -> LiteralValue;
@@ -374,42 +373,6 @@ impl LogicExecutor for TableData {
                 }
             }
         }
-    }
-
-    fn as_string(&self) -> String {
-        let mut s: String = String::from("");
-        let mut row_count = 0;
-        for col in &self.columns {
-            let current_biggest_index =  col.get_last_cell_index();
-            if current_biggest_index > row_count {
-                row_count = current_biggest_index;
-            }
-        }
-
-        for col in &self.columns {
-            s.push_str(&format!("{:<23}", col.name.as_str()));
-            s.push_str("|")
-        }
-        s.push_str("\n");
-        for row_index in 2..=row_count {
-            for col in &self.columns {
-                let value = col.resolved_value.get(&row_index);
-                if let Some(value) = value {
-                    if let Some(value_str) = value.value_as_string.as_ref() {
-                        s.push_str(&format!("{:<23}", value_str));
-                    } else  if let Some(value_str) = value.value_as_float.as_ref() {
-                        s.push_str(&format!("{:<23}", value_str));
-                    } else {
-                        s.push_str(&format!("{:<23}", ""));
-                    }
-                } else {
-                    s.push_str(&format!("{:<23}", ""));
-                }
-                s.push_str("|")
-            }
-            s.push_str("\n")
-        }
-        return s;
     }
 }
 
