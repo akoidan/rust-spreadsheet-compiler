@@ -9,6 +9,7 @@ pub trait LogicExecutor {
     fn parse_string(&self, s: String, index: u32, inc_from: &mut usize) -> LiteralValue;
     fn execute_str(&self, s: &str, index: u32, inc_from: &mut usize) -> LiteralValue;
     fn fill_data(&mut self);
+    fn as_string(&self) -> String;
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize);
     fn call_function(&self, name: &str, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue;
     fn evaluate_arithmetic(&self, operator: char, args: &Vec<LiteralValue>) -> LiteralValue;
@@ -166,7 +167,7 @@ impl LogicExecutor for TableData {
         assert_eq!(args.len(), 2, "concant accepts 2 element");
         let a: String = args[1].value_as_string.clone().unwrap();
         let b: String = args[0].value_as_string.clone().unwrap();
-        return Item::conduct_str_literal_value(format!("{}{}",a,b));
+        return Item::conduct_str_literal_value(format!("{}{}", a, b));
     }
 
     /// bte(@adjusted_cost<1>, @cost_threshold<1>)
@@ -246,11 +247,11 @@ impl LogicExecutor for TableData {
             let index = &s.at(i + 1).to_string().parse::<u32>().expect("Expected literal number");
             let value = self.get_by_coordinate(s.at(i), index);
             return (value, 2);
-        //  E^v
+            //  E^v
         } else if &s[i + 1..=i + 2] == "^v" {
             let res = self.get_last_value_of_the_column(s.at(i));
             return (res, 3);
-        //  E^
+            //  E^
         } else if &s[i + 1..=i + 1] == "^" {
             let value = self.get_by_coordinate(s.at(i), &(current_row_number - 1));
             return (value, 2);
@@ -374,4 +375,42 @@ impl LogicExecutor for TableData {
             }
         }
     }
+
+    fn as_string(&self) -> String {
+        let mut s: String = String::from("");
+        let mut row_count = 0;
+        for col in &self.columns {
+            let current_biggest_index =  col.get_last_cell_index();
+            if current_biggest_index > row_count {
+                row_count = current_biggest_index;
+            }
+        }
+
+        for col in &self.columns {
+            s.push_str(&format!("{:<23}", col.name.as_str()));
+            s.push_str("|")
+        }
+        s.push_str("\n");
+        for row_index in 2..=row_count {
+            for col in &self.columns {
+                let value = col.resolved_value.get(&row_index);
+                if let Some(value) = value {
+                    if let Some(value_str) = value.value_as_string.as_ref() {
+                        s.push_str(&format!("{:<23}", value_str));
+                    } else  if let Some(value_str) = value.value_as_float.as_ref() {
+                        s.push_str(&format!("{:<23}", value_str));
+                    } else {
+                        s.push_str(&format!("{:<23}", ""));
+                    }
+                } else {
+                    s.push_str(&format!("{:<23}", ""));
+                }
+                s.push_str("|")
+            }
+            s.push_str("\n")
+        }
+        return s;
+    }
 }
+
+

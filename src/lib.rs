@@ -2,45 +2,42 @@ mod table;
 mod logic_utils;
 mod table_factory;
 mod str_utils;
+extern crate regex;
+extern crate substring;
 
 #[cfg(test)]
 mod tests {
-    use crate::table::TableData;
     use crate::logic_utils::LogicExecutor;
     use crate::table_factory::lines_to_table;
+
+
     use std::fs::read_to_string;
+    use std::path::Path;
 
-    fn construct_table() -> TableData {
-        let data = read_to_string("/home/andrew/it/my-projects/rust/assets/transactions.csv")
+    fn fill_table_and_compare_to(from: &str, to: &str) {
+        let data = read_to_string(Path::new(from))
             .expect("Cannot open file");
-        return lines_to_table(&data);
-    }
-    #[test]
-    fn parses_single_forumla() {
-        let a = construct_table();
-        let value = a.parse_string(String::from("=text(bte(@adjusted_cost<1>, @cost_threshold<1>))"), 16, String::from("cost_too_high"));
-        println!("{}", value);
-    }
-
-    #[test]
-    fn parses_single_forumla_2() {
-        let a = construct_table();
-        let value = a.parse_string(String::from("=concat(\"t_\", text(incFrom(1)))"), 10, String::from("transaction_id"));
-        println!("{}", value);
+        let data_res = read_to_string(Path::new(to))
+            .expect("Cannot open file");
+        let mut table = lines_to_table(&data);
+        table.fill_data();
+        let rendered = table.as_string();
+        assert_eq!(data_res, rendered);
     }
 
     #[test]
-    fn parses_single_forumla_3() {
-        let a = construct_table();
-        let value = a.parse_string(String::from("=E^v+(E^v*A9)"), 7, String::from("adjusted_cost"));
-        println!("{}", value);
+    fn test_without_evaluating() {
+        fill_table_and_compare_to("./assets/simple_asset.csv", "./assets/simple_asset.res.csv");
     }
 
     #[test]
-    fn parses_single_forumla_4() {
-        let a = construct_table();
-        let value = a.parse_string(String::from("=2+4"), 7, String::from("adjusted_cost"));
-        println!("{}", value);
+    fn test_wqith_simple_evaluation() {
+        fill_table_and_compare_to("./assets/transactions_simple.csv", "./assets/transactions_simple.res.csv");
+    }
+
+    #[test]
+    fn test_given_example() {
+        fill_table_and_compare_to("./assets/transactions.csv", "./assets/transactions.res.csv");
     }
 
 }

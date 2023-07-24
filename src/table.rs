@@ -33,8 +33,8 @@ pub trait TableDataGetter {
     fn add_column(&mut self, name: &str, index: usize);
     fn get_by_name<'a>(&'a mut self, name: &str) -> &'a mut Column;
     fn get_by_name_unmut<'a>(&'a self, name: &str) -> &'a Column;
-    fn get_by_coordinate(&self, letter: char, row_number: &u32) -> LiteralValue;
     fn get_last_value_of_the_column(&self, letter: char) -> LiteralValue;
+    fn get_by_coordinate(&self, letter: char, row_number: &u32) -> LiteralValue;
 }
 
 pub trait ColumnGetter {
@@ -144,7 +144,7 @@ impl ColumnGetter for Column {
         let key = self.get_sorted_keys()[index - 1];
         return self
             .resolved_value.get(&key)
-            .expect(&format!("key by index {} not found", index))
+            .expect(&format!("key by index {} is has not been calculated yet or doesnt exist", index))
             .clone();
     }
 }
