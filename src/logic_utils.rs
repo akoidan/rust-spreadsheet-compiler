@@ -315,7 +315,7 @@ impl LogicExecutor for TableData {
                 if let Item::Literal(value) = stack.pop_back().expect("Stack evaluated to 0") {
                     return value;
                 } else {
-                    panic!("qt");
+                    panic!("Expression evaluted to something rather than value");
                 }
             }
             let prev_stack_length = stack.len();
