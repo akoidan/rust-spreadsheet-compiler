@@ -260,10 +260,10 @@ impl TableDataGetter for TableData {
         let mut max_width = 1;
         for col in &self.columns {
             let index = (col.letter as u8) - 'A' as u8;
-            if col.name.len() > max_width {
-                max_width = col.name.len() + 1;
-            }
             if index == col_index {
+                if col.name.len() > max_width {
+                    max_width = col.name.len() + 1;
+                }
                 for (_, value) in &col.resolved_value {
                     let str = Item::literal_to_string(&value);
                     if str.is_some() && str.as_ref().unwrap().len() > max_width {
@@ -307,12 +307,17 @@ impl TableDataGetter for TableData {
         let mut s: String = String::from("");
         let row_count = self.get_row_count();
         let col_count = self.get_col_count();
+        let mut col_widths: HashMap<usize, usize> = HashMap::new();
+
+        for col_index in 0..col_count {
+            col_widths.insert(col_index, self.get_col_width(col_index as u8));
+        }
 
         for row_index in 1..=row_count {
             for col_index in 0..col_count {
-                let width = self.get_col_width(col_index as u8);
                 let res = self.get_data_as_str(&(row_index as u32), col_index as u8);
                 if res.is_some() {
+                    let width = col_widths.get(&col_index).unwrap();
                     s.push_str(&format!("{:<width$}", res.unwrap().as_str(), width = width + 1));
                     s.push_str("|")
                 }
