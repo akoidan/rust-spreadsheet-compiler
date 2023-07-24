@@ -10,6 +10,7 @@ pub struct LiteralValue {
     value_as_float: Option<f32>,
     value_as_int: Option<usize>,
     value_as_str_array: Option<Vec<String>>,
+    value_as_float_array: Option<Vec<f32>>,
 }
 
 pub enum Item {
@@ -43,6 +44,7 @@ impl Item {
             value_as_str_array: None,
             value_as_float: None,
             value_as_int: Some(val),
+            value_as_float_array: None,
         }
     }
 
@@ -52,6 +54,7 @@ impl Item {
             value_as_str_array: None,
             value_as_float: Some(val),
             value_as_int: None,
+            value_as_float_array: None,
         }
     }
 
@@ -61,6 +64,7 @@ impl Item {
             value_as_str_array: None,
             value_as_float: None,
             value_as_int: None,
+            value_as_float_array: None,
         }
     }
 
@@ -123,7 +127,7 @@ pub trait LogicExecutor {
     fn execute_str(&self, s: &str, index: u32, name: String) -> String;
     fn fill_data(&mut self);
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize);
-    fn calc_function(&self, name: &str, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue;
+    fn call_function(&self, name: &str, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue;
     fn evaluate_arithmetic(&self, operator: char, args: &Vec<LiteralValue>) -> LiteralValue;
     fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (String, usize);
     fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
@@ -132,6 +136,8 @@ pub trait LogicExecutor {
     fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize);
     fn inc_from(&self, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue;
     fn split(&self, args: Vec<LiteralValue>) -> LiteralValue;
+    fn spread(&self, args: Vec<LiteralValue>) -> LiteralValue;
+    fn sum(&self, args: Vec<LiteralValue>)  -> LiteralValue;
 }
 
 impl LogicExecutor for TableData {
@@ -177,7 +183,7 @@ impl LogicExecutor for TableData {
                 if !stack.is_empty() {
                     let item_before_braces = stack.pop_back().unwrap();
                     if let Item::Token(operation) = item_before_braces {
-                        let res = self.calc_function(&operation, operands, inc_from);
+                        let res = self.call_function(&operation, operands, inc_from);
                         stack.push_back(Item::Literal(res));
                         break;
                     }
@@ -222,13 +228,14 @@ impl LogicExecutor for TableData {
         }
     }
 
-    fn calc_function(&self, name: &str, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue {
-        if (name == "incFrom") {
-            return self.inc_from(args, inc_from);
-        } else if (name == "split") {
-            return self.split(args);
+    fn call_function(&self, name: &str, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue {
+        match name {
+            "incFrom" => self.inc_from(args, inc_from),
+            "split" => self.split(args),
+            "spread" => self.spread(args),
+            "sum" => self.sum(args),
+            _ => Item::conduct_str_literal_value(format!("[{}({})]", name, "wtf")),
         }
-        return Item::conduct_str_literal_value(format!("[{}({})]", name, "wtf"));
     }
 
     fn inc_from(&self, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue {
@@ -238,10 +245,36 @@ impl LogicExecutor for TableData {
         return Item::conduct_int_literal_value(*inc_from);
     }
 
+    fn sum(&self, args: Vec<LiteralValue>)  -> LiteralValue {
+        assert_eq!(args.len(), 1, "summ accepts 1 element");
+        let sum: f32 = args[0].value_as_float_array.clone().unwrap().iter().sum();
+        return Item::conduct_float_literal_value(sum);
+    }
+
+    fn spread(&self, args: Vec<LiteralValue>) -> LiteralValue {
+        assert_eq!(args.len(), 1, "spread accept 1 arg");
+        let arr = args[0]
+            .value_as_str_array
+            .clone()
+            .expect("expected str array for spread");
+        let values: Vec<f32> = arr
+            .iter()
+            .map(|x| x.to_string().parse::<f32>().unwrap())
+            .collect();
+        return LiteralValue {
+            value_as_str_array: None,
+            value_as_string: None,
+            value_as_int: None,
+            value_as_float: None,
+            value_as_float_array: Some(values),
+        }
+    }
+
     fn split(&self, args: Vec<LiteralValue>) -> LiteralValue {
         assert_eq!(args.len(), 2, "split accept 2 arg");
-        let from_column = args[0].value_as_string.clone().unwrap();
-        let separator = args[1].value_as_string.clone().unwrap();
+        // arguments are in reversed because of stack.pop
+        let from_column = args[1].value_as_string.clone().unwrap();
+        let separator = args[0].value_as_string.clone().unwrap();
         assert_eq!(separator.len(), 1, "separator should be 1 symbol");
         let x: char = separator.at(0);
         let array_strs = from_column
@@ -253,7 +286,8 @@ impl LogicExecutor for TableData {
             value_as_string: None,
             value_as_float: None,
             value_as_int: None,
-            value_as_str_array: Some(array_strs)
+            value_as_str_array: Some(array_strs),
+            value_as_float_array: None,
         };
         return value;
     }
@@ -308,8 +342,8 @@ impl LogicExecutor for TableData {
             } else if s.at(i).is_ascii_digit() {
                 let digit_length = s.next_digit_length(i + 1);
                 let digit = &s[i..i + digit_length + 1];
-                let digitValue = digit.to_string().parse::<usize>().unwrap();
-                stack.push_back(Item::conduct_int_literal(digitValue));
+                let digit_val = digit.to_string().parse::<usize>().unwrap();
+                stack.push_back(Item::conduct_int_literal(digit_val));
                 i += digit_length + 1;
                 // if expression starts
             } else if ['(', '<'].contains(&s.at(i)) {
@@ -323,7 +357,7 @@ impl LogicExecutor for TableData {
                 // if string literal
             } else if s.at(i) == '\"' {
                 let literal_length = s.next_quote_length(i + 1);
-                let val = &s[i..i+1 + literal_length + 1]; // 2 is start+end quote
+                let val = &s[i+1..i + literal_length + 1]; // 2 is start+end quote
                 stack.push_back(Item::conduct_string_literal(val.to_string()));
                 i += literal_length + 2; // "asd" = 3 + 2
                 // if column reference
