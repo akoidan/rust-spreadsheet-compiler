@@ -35,6 +35,7 @@ pub trait TableDataGetter {
     fn get_by_name_unmut<'a>(&'a self, name: &str) -> &'a Column;
     fn get_last_value_of_the_column(&self, letter: char) -> LiteralValue;
     fn get_by_coordinate(&self, letter: char, row_number: &u32) -> LiteralValue;
+    fn get_col_width(&self, col_index: u8) -> usize;
     fn get_row_count(&self) -> usize;
     fn get_col_count(&self) -> usize;
     fn as_string(&self) -> String;
@@ -50,8 +51,8 @@ pub trait ColumnGetter {
 
 impl Item {
     pub fn get_literal_as_number(&self) -> usize {
-        if let Item::Literal(value)= self {
-            return value.value_as_int.expect("Expected literal number")
+        if let Item::Literal(value) = self {
+            return value.value_as_int.expect("Expected literal number");
         } else {
             panic!("Current item should be a literal");
         }
@@ -61,6 +62,18 @@ impl Item {
         return Item::Literal(Item::conduct_str_literal_value(val));
     }
 
+    pub fn literal_to_string(val: &LiteralValue) -> Option<String> {
+        if val.value_as_string.is_some() {
+            return Some(val.value_as_string.clone().unwrap().clone().to_string());
+        } else if val.value_as_float.is_some() {
+            return Some(val.value_as_float.unwrap().clone().to_string());
+        } else if val.value_as_int.is_some() {
+            return Some(val.value_as_int.unwrap().clone().to_string());
+        } else {
+            return None;
+        }
+    }
+
     pub fn conduct_int_literal_value(val: usize) -> LiteralValue {
         return LiteralValue {
             value_as_string: None,
@@ -68,7 +81,7 @@ impl Item {
             value_as_float: None,
             value_as_int: Some(val),
             value_as_float_array: None,
-        }
+        };
     }
 
     pub fn conduct_float_literal_value(val: f32) -> LiteralValue {
@@ -78,7 +91,7 @@ impl Item {
             value_as_float: Some(val),
             value_as_int: None,
             value_as_float_array: None,
-        }
+        };
     }
 
     pub fn conduct_str_literal_value(val: String) -> LiteralValue {
@@ -88,7 +101,7 @@ impl Item {
             value_as_float: None,
             value_as_int: None,
             value_as_float_array: None,
-        }
+        };
     }
 
     pub fn conduct_int_literal(val: usize) -> Item {
@@ -140,11 +153,11 @@ impl ColumnGetter for Column {
     }
 
     fn get_last_cell_index(&self) -> u32 {
-        return *self.string_values.keys().max().unwrap()
+        return *self.string_values.keys().max().unwrap();
     }
 
     fn get_first_cell_index(&self) -> u32 {
-        return *self.string_values.keys().min().unwrap()
+        return *self.string_values.keys().min().unwrap();
     }
 
     fn get_cell_by_index(&self, index: usize) -> LiteralValue {
@@ -191,9 +204,9 @@ impl TableDataGetter for TableData {
         let mut res: Option<LiteralValue> = None;
         for column in &self.columns {
             if column.letter != letter {
-                continue
+                continue;
             }
-            let new_index =  column.get_last_cell_index();
+            let new_index = column.get_last_cell_index();
             if new_index > colum_index {
                 colum_index = new_index;
                 res = Some(column.resolved_value.get(&new_index).unwrap().clone());
@@ -206,15 +219,15 @@ impl TableDataGetter for TableData {
     fn get_by_coordinate(&self, letter: char, row_number: &u32) -> LiteralValue {
         for column in &self.columns {
             if column.letter != letter {
-                continue
+                continue;
             }
-            let row =  column.resolved_value.get(row_number);
+            let row = column.resolved_value.get(row_number);
             if row.is_some() {
                 return column
                     .resolved_value
                     .get(row_number)
                     .unwrap()
-                    .clone()
+                    .clone();
             }
         }
         panic!("Referenced to non-existed column {}{}", letter, row_number);
@@ -225,29 +238,48 @@ impl TableDataGetter for TableData {
     /// since some name duplicate
     fn get_data_as_str(&self, row_index: &u32, col_index: u8) -> Option<String> {
         for col in &self.columns {
-            if col.letter as u8 - 'A' as u8  == col_index {
+            if col.letter as u8 - 'A' as u8 == col_index {
                 let value = col.resolved_value.get(&row_index);
                 if let Some(value) = value {
-                    if let Some(value_str) = value.value_as_string.as_ref() {
-                        return Some(format!("{:<23}", value_str));
-                    } else  if let Some(value_str) = value.value_as_float.as_ref() {
-                        return  Some(format!("{:<23}", value_str));
+                    if let Some(value_as_string) = value.value_as_string.as_ref() {
+                        return Some(value_as_string.to_string());
+                    } else if let Some(value_as_float) = value.value_as_float.as_ref() {
+                        return Some(value_as_float.to_string());
                     } else {
-                        return Some(format!("{:<23}", "????"));
+                        return Some("".to_string());
                     }
                 } else if col.get_first_cell_index() == (row_index + 1) {
-                    return Some(format!("!{:<22}", col.name));
+                    return Some(format!("!{}", col.name));
                 }
             }
         }
-        return None
+        return None;
+    }
+
+    fn get_col_width(&self, col_index: u8) -> usize {
+        let mut max_width = 1;
+        for col in &self.columns {
+            let index = (col.letter as u8) - 'A' as u8;
+            if col.name.len() > max_width {
+                max_width = col.name.len() + 1;
+            }
+            if index == col_index {
+                for (_, value) in &col.resolved_value {
+                    let str = Item::literal_to_string(&value);
+                    if str.is_some() && str.as_ref().unwrap().len() > max_width {
+                        max_width = str.as_ref().unwrap().len();
+                    }
+                }
+            }
+        }
+        return max_width;
     }
 
     /// Get original file amount of rows
     fn get_row_count(&self) -> usize {
         let mut current_biggest_index = 0;
         for col in &self.columns {
-            let cur_index =  col.get_last_cell_index();
+            let cur_index = col.get_last_cell_index();
             if cur_index > current_biggest_index {
                 current_biggest_index = cur_index;
             }
@@ -264,7 +296,7 @@ impl TableDataGetter for TableData {
             if col.letter == 'A' && !found_first_a {
                 found_first_a = true
             } else if col.letter == 'A' && found_first_a {
-                break
+                break;
             }
         }
         return col_count;
@@ -276,11 +308,12 @@ impl TableDataGetter for TableData {
         let row_count = self.get_row_count();
         let col_count = self.get_col_count();
 
-        for row_index in 1..=row_count { ;
+        for row_index in 1..=row_count {
             for col_index in 0..col_count {
+                let width = self.get_col_width(col_index as u8);
                 let res = self.get_data_as_str(&(row_index as u32), col_index as u8);
                 if res.is_some() {
-                    s.push_str(res.unwrap().as_str());
+                    s.push_str( &format!("{:<width$}", res.unwrap().as_str(), width = width+1));
                     s.push_str("|")
                 }
             }

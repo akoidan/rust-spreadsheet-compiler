@@ -150,15 +150,11 @@ impl LogicExecutor for TableData {
     /// text(incFrom(1))
     fn text(&self, args: Vec<LiteralValue>) -> LiteralValue {
         assert_eq!(args.len(), 1, "summ accepts 1 element");
-        if args[0].value_as_string.is_some() {
-            return Item::conduct_str_literal_value(args[0].value_as_string.clone().unwrap());
-        } else if args[0].value_as_float.is_some() {
-            return Item::conduct_str_literal_value(args[0].value_as_float.unwrap().clone().to_string());
-        } else if args[0].value_as_int.is_some() {
-            return Item::conduct_str_literal_value(args[0].value_as_int.unwrap().clone().to_string());
-        } else {
+        let res = Item::literal_to_string(&args[0]);
+        if res.is_none() {
             panic!("text function supports only text and int")
         }
+        return Item::conduct_str_literal_value(res.unwrap());
     }
 
     /// concat("t_", text(incFrom(1)))
