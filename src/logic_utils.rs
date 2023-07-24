@@ -7,17 +7,16 @@ use regex::{Regex};
 
 pub trait LogicExecutor {
     fn parse_string(&self, s: String, index: u32, inc_from: &mut usize) -> LiteralValue;
-    // fn get_command(s: &str) -> Command;
     fn execute_str(&self, s: &str, index: u32, inc_from: &mut usize) -> LiteralValue;
     fn fill_data(&mut self);
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize);
     fn call_function(&self, name: &str, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue;
     fn evaluate_arithmetic(&self, operator: char, args: &Vec<LiteralValue>) -> LiteralValue;
     fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (LiteralValue, usize);
-    fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>);
     fn increase_column_digits(text: String, prev_num: u32) -> String;
     fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>);
     fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize);
+
     fn inc_from(&self, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue;
     fn split(&self, args: Vec<LiteralValue>) -> LiteralValue;
     fn spread(&self, args: Vec<LiteralValue>) -> LiteralValue;
@@ -28,6 +27,9 @@ pub trait LogicExecutor {
 }
 
 impl LogicExecutor for TableData {
+    /// ^^
+    /// =E^+sum(spread(split(D3, ",")))
+    /// -> =E^+sum(spread(split(D4, ",")))
     fn increase_column_digits(text: String, prev_num: u32) -> String {
         return Regex::new(format!("[A-Z]{prev_num}+").as_str())
             .unwrap()
@@ -36,8 +38,7 @@ impl LogicExecutor for TableData {
             }).to_string();
     }
 
-    fn revaluate_from_literal(&self, stack: &mut VecDeque<Item>) {}
-
+    /// @adjusted_cost<1>
     fn evaluate_column_reference(&self, stack: &mut VecDeque<Item>) {
         let column_with_index = stack.pop_back().expect("column reference should predicate index");
         let column_index = column_with_index.get_literal_as_number();
@@ -55,6 +56,8 @@ impl LogicExecutor for TableData {
         stack.push_back(Item::Literal(literal));
     }
 
+    /// e.g. split(D3, ",")
+    /// (E^v*A9)
     fn evaluate_curly_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize) {
         let mut operands: Vec<LiteralValue> = vec![];
         loop {
@@ -101,6 +104,7 @@ impl LogicExecutor for TableData {
         }
     }
 
+    /// if we faced the end zone symbol, e.g. '>' or ')' we should go back and eval it
     fn revaluate_from_end_zone(&self, stack: &mut VecDeque<Item>, inc_from: &mut usize) {
         let end_zone_symbol = stack
             .pop_back()
@@ -114,6 +118,7 @@ impl LogicExecutor for TableData {
         }
     }
 
+    /// call function by its name e.g. incFrom(1)
     fn call_function(&self, name: &str, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue {
         match name {
             "incFrom" => self.inc_from(args, inc_from),
@@ -127,6 +132,7 @@ impl LogicExecutor for TableData {
         }
     }
 
+    /// incFrom(1)
     fn inc_from(&self, args: Vec<LiteralValue>, inc_from: &mut usize) -> LiteralValue {
         assert_eq!(args.len(), 1, "incFrom accept 1 arg");
         let i = args[0].value_as_int.unwrap();
@@ -134,12 +140,14 @@ impl LogicExecutor for TableData {
         return Item::conduct_int_literal_value(*inc_from);
     }
 
+    /// sum(spread(split(D2, ",")))
     fn sum(&self, args: Vec<LiteralValue>) -> LiteralValue {
         assert_eq!(args.len(), 1, "summ accepts 1 element");
         let sum: f32 = args[0].value_as_float_array.clone().unwrap().iter().sum();
         return Item::conduct_float_literal_value(sum);
     }
 
+    /// text(incFrom(1))
     fn text(&self, args: Vec<LiteralValue>) -> LiteralValue {
         assert_eq!(args.len(), 1, "summ accepts 1 element");
         if args[0].value_as_string.is_some() {
@@ -153,6 +161,7 @@ impl LogicExecutor for TableData {
         }
     }
 
+    /// concat("t_", text(incFrom(1)))
     fn concat(&self, args: Vec<LiteralValue>) -> LiteralValue {
         assert_eq!(args.len(), 2, "concant accepts 2 element");
         let a: String = args[1].value_as_string.clone().unwrap();
@@ -160,6 +169,7 @@ impl LogicExecutor for TableData {
         return Item::conduct_str_literal_value(format!("{}{}",a,b));
     }
 
+    /// bte(@adjusted_cost<1>, @cost_threshold<1>)
     fn bte(&self, args: Vec<LiteralValue>) -> LiteralValue {
         assert_eq!(args.len(), 2, "summ accepts 1 element");
         let a: f32 = args[1].value_as_float.unwrap();
@@ -171,6 +181,7 @@ impl LogicExecutor for TableData {
         return Item::conduct_str_literal_value(res.to_string());
     }
 
+    /// spread(split(D2, ","))
     fn spread(&self, args: Vec<LiteralValue>) -> LiteralValue {
         assert_eq!(args.len(), 1, "spread accept 1 arg");
         let arr = args[0]
@@ -190,6 +201,7 @@ impl LogicExecutor for TableData {
         };
     }
 
+    /// split(D2, ",")
     fn split(&self, args: Vec<LiteralValue>) -> LiteralValue {
         assert_eq!(args.len(), 2, "split accept 2 arg");
         // arguments are in reversed because of stack.pop
@@ -212,6 +224,7 @@ impl LogicExecutor for TableData {
         return value;
     }
 
+    /// E^v+(E^v*A9)
     fn evaluate_arithmetic(&self, operator: char, args: &Vec<LiteralValue>) -> LiteralValue {
         assert_eq!(args.len(), 2, "Cannot operate with complex arguments");
         let a = args[0].value_as_float.unwrap();
@@ -226,14 +239,18 @@ impl LogicExecutor for TableData {
         return Item::conduct_float_literal_value(c);
     }
 
+    /// E^, E^v, A9
     fn resolve_literal_at(&self, s: &str, i: usize, current_row_number: u32) -> (LiteralValue, usize) {
+        // A9
         if s.at(i + 1).is_ascii_digit() { // cell reference
             let index = &s.at(i + 1).to_string().parse::<u32>().expect("Expected literal number");
             let value = self.get_by_coordinate(s.at(i), index);
             return (value, 2);
+        //  E^v
         } else if &s[i + 1..=i + 2] == "^v" {
             let res = self.get_last_value_of_the_column(s.at(i));
             return (res, 3);
+        //  E^
         } else if &s[i + 1..=i + 1] == "^" {
             let value = self.get_by_coordinate(s.at(i), &(current_row_number - 1));
             return (value, 2);
@@ -242,6 +259,7 @@ impl LogicExecutor for TableData {
         }
     }
 
+    /// evaluate expression inside of cell
     fn execute_str(&self, s: &str, index: u32, inc_from: &mut usize) -> LiteralValue {
         let mut stack: VecDeque<Item> = VecDeque::new();
         let mut i = 0;
@@ -309,6 +327,8 @@ impl LogicExecutor for TableData {
         panic!("Invalid expression");
     }
 
+    /// create literal from expression
+    /// if expression has = at start, evaluate it
     fn parse_string(&self, s: String, index: u32, inc_from: &mut usize) -> LiteralValue {
         return if &s.as_str()[0..=0] == "=" {
             // this formula should be evaluated
@@ -323,6 +343,7 @@ impl LogicExecutor for TableData {
         };
     }
 
+    /// loop through cells and fill resolved_value
     fn fill_data(&mut self) {
         let mut inc_from: usize = 0; // for incFrom(
         for column_index in 0..self.columns.len() {

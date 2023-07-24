@@ -1,10 +1,13 @@
 use crate::str_utils::StrUtils;
 use crate::table::{TableData, TableDataGetter};
 
+/// check if current cell indicates a head, e.g. !date
 fn is_head(col: &str) -> bool {
     return col.starts_with("!");
 }
 
+/// creates TableData from csv file content.
+/// evaluation is not permitted here
 pub fn lines_to_table(csv_str: &str) -> TableData {
     let rows: Vec<&str> = csv_str.split_to_vect('\n');
     let mut table: TableData = TableData { columns: vec![] };

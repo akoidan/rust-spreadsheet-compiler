@@ -162,6 +162,8 @@ impl ColumnGetter for Column {
 }
 
 impl TableDataGetter for TableData {
+    /// Adds column to table by specific Name (e.g. !adjusted_cost)
+    /// to specific col_index that transforms to a letter (e.g. A)
     fn add_column(&mut self, name: &str, index: usize) {
         let letter = char::from(('A' as u8) + (index as u8)); // 0 -> A, 1 -> B, ...
         assert!(!self.columns.iter().any(|x| x.name == name), "Column {} already exists", name);
@@ -173,20 +175,20 @@ impl TableDataGetter for TableData {
         });
     }
 
+    /// Returns a mutable Column by name e.g. adjusted_cost
     fn get_by_name<'a>(&'a mut self, name: &str) -> &'a mut Column {
         let index = self.columns.iter().position(|x| x.name == name);
         return &mut self.columns[index.expect(&format!("column {name} doesnt exist"))];
     }
-
+    //// Returns a Column by name e.g. adjusted_cost
     fn get_by_name_unmut<'a>(&'a self, name: &str) -> &'a Column {
         let index = self.columns.iter().position(|x| x.name == name);
         return &self.columns[index.expect(&format!("column {name} doesnt exist"))];
     }
 
-    /*
-        Returns the last (closer to bottom) cell by specified letter
-        e.g. if 2 named columns present on letter A, then it would return the lower one
-     */
+
+    ///     Returns the last (closer to bottom) cell by specified letter
+    ///    e.g. if 2 named columns present on letter A, then it would return the lower one
     fn get_last_value_of_the_column(&self, letter: char) -> LiteralValue {
         let mut colum_index: u32 = 0;
         let mut res: Option<LiteralValue> = None;
@@ -203,6 +205,7 @@ impl TableDataGetter for TableData {
         return res.expect("No such letter");
     }
 
+    /// Returns LiteralValue (calculated already) by coordinates, e.g. D2 or A9
     fn get_by_coordinate(&self, letter: char, row_number: &u32) -> LiteralValue {
         for column in &self.columns {
             if column.letter != letter {
