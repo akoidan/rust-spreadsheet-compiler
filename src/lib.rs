@@ -1,19 +1,18 @@
+extern crate regex;
+
 mod table;
 mod logic_utils;
 pub mod table_factory;
 mod str_utils;
 
-extern crate regex;
-
 #[cfg(test)]
 mod tests {
-    use crate::logic_utils::LogicExecutor;
-    use crate::table_factory::lines_to_table;
-    use crate::table::TableDataGetter;
-
-
     use std::fs::read_to_string;
     use std::path::Path;
+
+    use crate::logic_utils::LogicExecutor;
+    use crate::table::TableDataGetter;
+    use crate::table_factory::lines_to_table;
 
     fn fill_table_and_compare_to(from: &str, to: &str) {
         let data = read_to_string(Path::new(from))
@@ -40,5 +39,4 @@ mod tests {
     fn test_given_example() {
         fill_table_and_compare_to("./assets/transactions.csv", "./assets/transactions.res.csv");
     }
-
 }

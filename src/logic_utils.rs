@@ -1,9 +1,9 @@
 use std::collections::VecDeque;
 
-use crate::str_utils::{StrUtils};
-use crate::table::{TableDataGetter, TableData, ColumnGetter, Item, LiteralValue};
-use regex::{Regex};
+use regex::Regex;
 
+use crate::str_utils::StrUtils;
+use crate::table::{ColumnGetter, Item, LiteralValue, TableData, TableDataGetter};
 
 pub trait LogicExecutor {
     fn parse_string(&self, s: String, index: u32, inc_from: &mut usize) -> LiteralValue;

@@ -1,16 +1,16 @@
+extern crate regex;
+
+use std::env;
+use std::fs::read_to_string;
+
+use logic_utils::LogicExecutor;
+use table::TableDataGetter;
+use table_factory::lines_to_table;
+
 mod logic_utils;
 mod str_utils;
 mod table;
 mod table_factory;
-
-use logic_utils::LogicExecutor;
-use std::fs::read_to_string;
-use table_factory::lines_to_table;
-use table::TableDataGetter;
-
-use std::env;
-
-extern crate regex;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

@@ -313,7 +313,7 @@ impl TableDataGetter for TableData {
                 let width = self.get_col_width(col_index as u8);
                 let res = self.get_data_as_str(&(row_index as u32), col_index as u8);
                 if res.is_some() {
-                    s.push_str( &format!("{:<width$}", res.unwrap().as_str(), width = width+1));
+                    s.push_str(&format!("{:<width$}", res.unwrap().as_str(), width = width + 1));
                     s.push_str("|")
                 }
             }
