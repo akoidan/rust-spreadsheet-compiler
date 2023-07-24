@@ -1,7 +1,8 @@
 mod table;
 mod logic_utils;
-mod table_factory;
+pub mod table_factory;
 mod str_utils;
+
 extern crate regex;
 
 #[cfg(test)]

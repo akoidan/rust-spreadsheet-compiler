@@ -7,3 +7,8 @@ edition = "2021"
 
 [dependencies]
 regex = "1.9.1"
+
+[[bin]]
+edition = "2021"
+name = "transaction_parser"
+path = "src/main.rs"

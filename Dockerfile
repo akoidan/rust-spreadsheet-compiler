@@ -1,9 +1,7 @@
-FROM rust:slim-buster
+FROM rust:slim-buster as builder
 
-LABEL authors="akodain"
-
-WORKDIR ~/app
+WORKDIR /app
 COPY . .
+RUN cargo build --bin transaction_parser
 
-RUN cargo build
-ENTRYPOINT ["cargo", "run"]
+CMD ["/app/target/debug/transaction_parser", "/app/assets/transactions.csv"]

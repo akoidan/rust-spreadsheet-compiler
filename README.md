@@ -1,0 +1,28 @@
+## Spreadsheets parser
+
+This repo parses [this](https://github.com/stakingrewards/engineering-challenge/blob/backend/transactions.csv) file
+Please take a look at the [task](https://github.com/stakingrewards/engineering-challenge/tree/backend)
+
+## To run this image
+
+#### With Docker
+
+Please use wide terminal with at least 200 symbols width
+
+```bash
+docker build . -t spreadsheet
+docker run -t spreadsheet
+```
+
+#### Natively
+To run you need to have [Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) and [Rust](https://doc.rust-lang.org/book/ch00-00-introduction.html). Please execute from the project root.
+```bash
+cargo run ./assets/transactions.csv`
+```
+
+
+# TODO
+
+This code provides an MVP (Minimum Viable Product) only for the demo purposes. 
+It was tested only on [transactions-sample.csv](https://github.com/stakingrewards/engineering-challenge/blob/backend/transactions-sample.csv). This file was corrected on line 17, since it's missing an end bracket.
+If further support is needed, mainter should be contacted directly.
