@@ -1,8 +1,18 @@
-[![Github actions](https://github.com/akoidan/rust-tricks/workflows/Test/badge.svg)](https://github.com/akoidan/rust-tricks/actions)
-## Spreadsheets parser
+## Rust Spreadsheet compiler
 
-This repo parses [this](https://github.com/stakingrewards/engineering-challenge/blob/backend/transactions.csv) file
-Please take a look at the [task](https://github.com/stakingrewards/engineering-challenge/tree/backend)
+A simple compiler in Rust for parsing CSV spreadsheet files with formulas, e.g.
+```csv
+!date|!transaction_id|!tokens|!token_prices|!total_cost
+2022-02-20|=concat("t_", text(incFrom(1)))|btc,eth,dai|38341.88,2643.77,1.0003|=sum(spread(split(D2, ",")))
+2022-02-21|=^^|bch,eth,dai|304.38,2621.15,1.0001|=E^+sum(spread(split(D3, ",")))
+2022-02-22|=^^|sol,eth,dai|85,2604.17,0.9997|=^^
+!fee|!cost_threshold|||
+0.09|10000|||
+!adjusted_cost||||
+=E^v+(E^v*A6)||||
+!cost_too_high||||
+=text(bte(@adjusted_cost<1>, @cost_threshold<1>)||||
+```
 
 ## To run this image
 
@@ -25,9 +35,3 @@ You can also run binary with
 cargo build --bin transaction_parser
 ./target/debug/transaction_parser ./assets/transactions.csv
 ```
-
-# TODO
-
-This code provides an MVP (Minimum Viable Product) only for the demo purposes. 
-It was tested only on [transactions-sample.csv](https://github.com/stakingrewards/engineering-challenge/blob/backend/transactions-sample.csv). This file was corrected on line 17, since it's missing an end bracket.
-If further support is needed, mainter should be contacted directly.
